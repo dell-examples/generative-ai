@@ -1,0 +1,23 @@
+orthanc:
+  url: "http://localhost:8042"
+  username: "admin"
+  password: "admin"
+
+output_directory: "output"
+
+#Only update if you are changing or updating CV model
+inference:
+  model: ""
+  image: ""
+  labels: "./xray.txt"
+  batch_size: 1
+  ip: "127.0.0.1"
+  http_port: 8998
+  grpc_port: 50051
+  endpoint: "pneumonia"
+  top: 1
+  input_size: 224
+  output_classes: 2
+  input_node: "x"
+  output_node: "model_7/dense_15/Softmax"
+  wait: True

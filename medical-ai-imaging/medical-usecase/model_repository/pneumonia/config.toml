@@ -1,0 +1,12 @@
+name = "pneumonia"
+platform = "tensorflow_graphdef"
+
+[[inputs]]
+name = "x"
+datatype = "FP32"
+shape = [224, 224, 1]
+
+[[outputs]]
+name = "model_7/dense_15/Softmax"
+datatype = "FP32"
+shape = [2]

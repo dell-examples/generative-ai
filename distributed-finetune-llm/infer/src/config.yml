@@ -1,0 +1,10 @@
+# Created by scalers.ai for Dell
+
+chatbot_args:
+  model_path: "meta-llama/Llama-2-7b-hf"
+  max_new_tokens: 500
+  max_padding_length: 4096
+  data_type: "torch.bfloat16"
+  port: 7860
+other_args:
+  hf_token: ""

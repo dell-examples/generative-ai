@@ -1,0 +1,15 @@
+# Created by Scalers AI for Dell Inc.
+# Dockerfile to create a container with specific requirements and start the UI.
+
+FROM python:3.9.4-slim
+
+RUN apt-get update && apt-get install python3-opencv ffmpeg curl -y
+COPY requirements.txt .
+
+RUN pip install -r requirements.txt
+
+COPY src /src
+
+WORKDIR /src
+
+CMD python3 app.py
