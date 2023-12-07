@@ -1,0 +1,9 @@
+datasets==2.14.6
+transformers==4.34.1
+deepspeed==0.11.1
+accelerate==0.24.0
+sentencepiece==0.1.99
+evaluate==0.4.1
+huggingface-hub==0.17.3
+ray[default]==2.7.1
+GPUtil==1.4.0

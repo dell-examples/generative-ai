@@ -1,0 +1,52 @@
+version: "3"
+services:
+
+  core:
+    container_name: core
+    build:
+      context: ./core
+      dockerfile: Dockerfile
+    network_mode: host
+    volumes:
+      - ./app.log:/src/app.log
+      - ./config.yaml:/src/config.yaml
+    restart: always
+
+  amd_model_server:
+    container_name: modelserver
+    image: amdih/serve:uif1.2_zendnn_amdinfer_0.4.0
+    network_mode: host
+    volumes:
+      - ./model_repository:/mnt/models:rw
+    restart: always
+
+  pacs:
+    container_name: orthanc
+    image: jodogne/orthanc-plugins:1.12.1
+    ports:
+      - 8042:8042
+      - 4242:4242
+    volumes:
+      - ./orthanc.json:/etc/orthanc/orthanc.json:ro
+      - ./orthanc_db:/var/lib/orthanc/db/
+    restart: always
+    networks:
+      - pacs
+
+  ohif_viewer:
+    container_name: ohif
+    image: ohif/viewer:v4.12.51.21579
+    ports:
+      - 3000:80
+    environment:
+      - APP_CONFIG:/usr/share/nginx/html/app-config.js
+    volumes:
+      - ./nginx_ohif.conf:/etc/nginx/conf.d/default.conf:ro
+      - ./ohif.js:/usr/share/nginx/html/app-config.js:ro
+    restart: always
+    networks:
+      - pacs
+
+networks:
+  pacs:
+    external: true

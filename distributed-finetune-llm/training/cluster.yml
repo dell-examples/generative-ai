@@ -1,0 +1,97 @@
+# Created by scalers.ai for Dell
+
+# RayCluster Deployment
+apiVersion: ray.io/v1alpha1
+kind: RayCluster
+metadata:
+  labels:
+    controller-tools.k8s.io: "1.0"
+  name: raycluster
+spec:
+  rayVersion: '2.2.0'
+  headGroupSpec:
+    rayStartParams:
+      dashboard-host: '0.0.0.0'
+      num-gpus: "8"
+    template:
+      metadata:
+        labels:
+          name: ray-head
+      spec:
+        runtimeClassName: nvidia
+        containers:
+        - name: ray-head
+          image: traindell.azurecr.io/train:latest
+          imagePullPolicy: IfNotPresent
+          lifecycle:
+            preStop:
+              exec:
+                command: ["/bin/sh","-c","ray stop"]
+          resources:
+            limits:
+              cpu: "100"
+              memory: "1T"
+              nvidia.com/gpu: 8
+            requests:
+              cpu: "100"
+              memory: "1T"
+              nvidia.com/gpu: 8
+          volumeMounts:
+            - name: nfs-pv
+              mountPath: /train
+        volumes:
+        - name: nfs-pv
+          persistentVolumeClaim:
+            claimName: nfs-pvc
+        imagePullSecrets:
+        - name: cr-login
+  workerGroupSpecs:
+  - replicas: 2
+    minReplicas: 2
+    maxReplicas: 300
+    groupName: gpu-group
+    rayStartParams:
+      num-gpus: "4"
+    template:
+      spec:
+        runtimeClassName: nvidia
+        containers:
+        - name: training
+          image:  traindell.azurecr.io/train:latest
+          imagePullPolicy: IfNotPresent
+          lifecycle:
+            preStop:
+              exec:
+                command: ["/bin/sh","-c","ray stop"]
+          resources:
+            limits:
+              cpu: "100"
+              memory: "1T"
+              nvidia.com/gpu: 4
+            requests:
+              cpu: "100"
+              memory: "1T"
+              nvidia.com/gpu: 4
+          volumeMounts:
+            - name: nfs-pv
+              mountPath: /train
+        volumes:
+        - name: nfs-pv
+          persistentVolumeClaim:
+            claimName: nfs-pvc
+        imagePullSecrets:
+        - name: cr-login
+---
+# Ray dashboard port(8265) service
+apiVersion: v1
+kind: Service
+metadata:
+  name: ray-head-dashboard-port
+spec:
+  selector:
+    name: ray-head
+  type: NodePort
+  ports:
+  - port: 8265
+    targetPort: 8265
+    nodePort: 30265

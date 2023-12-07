@@ -1,0 +1,53 @@
+version: "3.9"
+services:
+  rtspsim:
+    image: rtspsim
+    build:
+      context: ./rtspsim
+      dockerfile: Dockerfile.rtsp
+    volumes:
+    - ./rtspsim/input:/input/
+    ports:
+    - "8555:8554"
+    - "8888:8888"
+    environment:
+    - RTSP_PROTOCOLS=tcp
+
+  gradio:
+    build:
+      context: ./dashboard
+      dockerfile: Dockerfile.ui
+    volumes:
+      - /tmp:/tmp
+    ports:
+      - 7860:7860
+    healthcheck:
+      test: ["CMD-SHELL", "curl --fail http://llama:8000/health || exit 1"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+    environment:
+      - HOST_IP=$HOST_IP
+
+  whisper:
+    build:
+      context: ./audio-ai-module
+      dockerfile: Dockerfile.whisper
+    volumes:
+      - /tmp:/tmp
+    ports:
+      - 8080:8080
+
+  llama:
+    build:
+      context: ./llm-module
+      dockerfile: Dockerfile.llama
+    ports:
+      - 8000:8000
+    environment:
+      - HF_TOKEN=$HF_TOKEN
+
+  yolo:
+    build:
+      context: ./video-ai-module
+      dockerfile: Dockerfile.yolo
