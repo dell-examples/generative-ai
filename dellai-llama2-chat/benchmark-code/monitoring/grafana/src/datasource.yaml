@@ -1,0 +1,22 @@
+apiVersion: 1
+
+datasources:
+  - name: InfluxDB
+    type: influxdb
+    isDefault: true
+    access: proxy
+    url: http://influxdb:8086
+    jsonData:
+      version: Flux
+      organization: scalers
+      defaultBucket: telegraf
+      tlsSkipVerify: true
+    secureJsonData:
+      token: 3e3caff1da7fb6d24134ed7d2017c22452823bb7130bcf2322d2af6756c499eb
+
+
+#GPT2 medium default
+
+#Torch run 2 times
+
+#keep on pulling nano gpt

@@ -1,0 +1,46 @@
+version: "3.9"
+
+services:
+  influxdb:
+    image: influxdb:2.6
+    volumes:
+      - influxdb-storage:/var/lib/influxdb2:rw
+    env_file:
+      - .env
+    entrypoint: ["./entrypoint.sh"]
+    restart: on-failure:10
+    ports:
+      - ${DOCKER_INFLUXDB_INIT_PORT}:8086
+
+  telegraf:
+    image: telegraf
+    build:
+      context: ./telegraf
+      dockerfile: Dockerfile.telegraf
+    env_file:
+      - .env
+    depends_on:
+      - influxdb
+    deploy:
+      resources:
+        reservations:
+          devices:
+            - driver: nvidia
+              count: all
+              capabilities: [gpu]
+
+  grafana:
+    image: grafana
+    build:
+      context: ./grafana
+      dockerfile: Dockerfile.grafana
+    volumes:
+      - grafana-storage:/var/lib/grafana:rw
+    depends_on:
+      - influxdb
+    ports:
+      - ${GRAFANA_PORT}:3000
+
+volumes:
+  grafana-storage:
+  influxdb-storage:
