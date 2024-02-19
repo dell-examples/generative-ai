@@ -1,0 +1,38 @@
+version: "3.9"
+
+services:
+  visualization:
+    image: visualization
+    build:
+      context: ./visualization
+      dockerfile: Dockerfile.visualization
+    container_name: visualization
+    network_mode: host
+    volumes:
+      - ../config/simulator_config.yaml:/example-webrtc-applications/gstreamer-send/pipeline_config.yml
+    environment:
+    - SERVER_IP=$VISUALIZATION_SERVER_IP
+
+  signaling:
+    image: signaling
+    build:
+      context: ./webrtc_signaling
+      dockerfile: Dockerfile.signaling
+    network_mode: host
+    volumes:
+      - ./webrtc_signaling/src:/src
+
+  dashboard:
+    build:
+      context: ./dashboard
+      dockerfile: Dockerfile
+    volumes:
+      - ../config:/src/config
+      - ../config/status/voyage_text/final_report.md:/src/static/final_report.md
+      - ../config/status/voyage_text:/src/voyage_text
+      - ../config/simulator_config.yaml:/src/simulator_config.yaml
+      - ./app.log:/src/app.log
+    network_mode: host
+    environment:
+    - VISUALIZATION_SERVER_IP=$VISUALIZATION_SERVER_IP
+    - AI_SERVICES_SERVER_IP=$AI_SERVICES_SERVER_IP

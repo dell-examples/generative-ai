@@ -1,0 +1,12 @@
+Below is the data with events relates to how the container sweating is managed with ventilator systems during a  Container ship voyage 
+
+# Events
+
+| Time | Event | Number of Containers  | Dewpoint | Comment |
+|------|-------|--------------|----------|---------|
+| 2024-02-14 12:10:20 | Sweating Detected | 81 | 2.57 | Sweating observed, analytics triggered |
+| 2024-02-14 12:10:40 | Sweating Resolved | 0 | nan | Sweating resolved, ventilators deactivated |
+| 2024-02-14 12:10:55 | Sweating Detected | 33 | 39.35 | Sweating observed, analytics triggered |
+| 2024-02-14 12:11:10 | Sweating Resolved | 0 | nan | Sweating resolved, ventilators deactivated |
+| 2024-02-14 12:11:40 | Sweating Detected | 10 | 39.22 | Sweating observed, analytics triggered |
+| 2024-02-14 12:11:55 | Sweating Resolved | 0 | nan | Sweating resolved, ventilators deactivated |

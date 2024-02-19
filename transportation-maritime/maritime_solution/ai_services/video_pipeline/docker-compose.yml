@@ -1,0 +1,35 @@
+# Created by scalers.ai for Dell
+
+version: "3.9"
+services:
+
+  deepstream:
+    image: pipeline
+    build:
+      context: ./
+      dockerfile: dockerfile
+    network_mode: host
+    deploy:
+      resources:
+        reservations:
+          devices:
+            - driver: nvidia
+              count: all
+              capabilities: [gpu]
+    environment:
+    - VISUALIZATION_SERVER_IP=$VISUALIZATION_SERVER_IP
+    volumes:
+      - ../../config/simulator_config.yaml:/pipeline/config.yml
+      - ./app.log:/pipeline/app.log
+
+  rtspsim:
+    image: rtspsim
+    build:
+      context: ./rtspsim
+      dockerfile: Dockerfile.rtsp   
+    volumes:
+    - ./rtspsim/input:/input/
+    ports:
+    - "8554:8554"
+    environment:
+    - RTSP_PROTOCOLS=tcp
