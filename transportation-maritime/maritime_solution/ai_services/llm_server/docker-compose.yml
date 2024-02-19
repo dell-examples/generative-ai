@@ -1,0 +1,21 @@
+version: "3.9"
+
+services:
+  llm_server:
+    image: llm_server
+    build:
+      context: ./
+      dockerfile: Dockerfile
+    network_mode: host
+    deploy:
+      resources:
+        reservations:
+          devices:
+            - driver: nvidia
+              count: all
+              capabilities: [gpu]
+    volumes:
+      - $HOME/.cache:/root/.cache
+      - ../../config/simulator_config.yaml:/src/simulator_config.yaml
+      - ../../config/status/voyage_text:/src/voyage_text
+      - ./app.log:/src/app.log

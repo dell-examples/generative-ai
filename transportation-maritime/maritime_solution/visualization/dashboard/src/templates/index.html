@@ -1,0 +1,87 @@
+<!DOCTYPE html>
+<html>
+  <head>
+    <title>Ship Tracker</title>
+    <link
+      rel="stylesheet"
+      href="https://unpkg.com/leaflet@1.7.1/dist/leaflet.css"
+    />
+    <style>
+      #map {
+        height: 100vh;
+      }
+    </style>
+  </head>
+  <body>
+    <div id="map"></div>
+    <script src="https://unpkg.com/leaflet@1.7.1/dist/leaflet.js"></script>
+    <script>
+        async function readJSON(apiurl) {
+            try {
+              const response = await fetch(apiurl);
+
+              if (!response.ok) {
+                throw new Error(`Failed to fetch the response: ${response.status} ${response.statusText}`);
+              }
+
+              const content = await response.text();
+              const data = parseJSON(content);
+
+              // Store the data in a DDA
+              const dda = [];
+              for (const item of data) {
+                const latitude = item.Latitude;
+                const longitude = item.Longitude;
+                dda.push([latitude, longitude]);
+              }
+
+              // Draw polyline on the map
+              drawPolyline(dda);
+            } catch (error) {
+              console.error('Error:', error);
+            }
+          }
+
+          function parseJSON(jsonContent) {
+            try {
+              const jsonData = JSON.parse(jsonContent);
+              return jsonData;
+            } catch (error) {
+              console.error('Error parsing JSON:', error);
+              return null;
+            }
+          }
+
+          function drawPolyline(data) {
+            const polyline = L.polyline(data, { color: '#00f4fc', weight:5 }).addTo(map);
+            map.fitBounds(polyline.getBounds());
+          }
+
+      var map = L.map("map").setView([0.0, 0.0], 2); // Initialize map with center and zoom level
+      readJSON("/get_ship_data");
+
+      L.tileLayer(
+        "https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}",
+        {
+          attribution:
+            "Source: Esri, i-cubed, USDA, USGS, AEX, GeoEye, Getmapping, Aerogrid, IGN, IGP, UPR-EGP, and the GIS User Community",
+        }
+      ).addTo(map);
+
+      var shipMarker = L.marker([0.0, 0.0]).addTo(map);
+      shipMarker._icon.style.filter = "hue-rotate(120deg)" // Initialize marker
+
+      function updateShipLocation() {
+        fetch("/current_location")
+          .then((response) => response.json())
+          .then((data) => {
+            console.log(data);
+            shipMarker.setLatLng([data.Latitude[0], data.Longitude[0]]); // Update marker position
+          })
+          .catch((error) => console.error("Error:", error));
+      }
+
+      setInterval(updateShipLocation, 1000); // Update location every 2 seconds
+    </script>
+  </body>
+</html>

@@ -1,0 +1,10 @@
+transformers==4.37.2
+torch==2.2.0
+langchain==0.1.5
+langchain-community==0.0.19
+sentence-transformers==2.3.1
+chromadb==0.4.22
+fastapi==0.109.2
+uvicorn==0.27.1
+markdown==3.5.2
+accelerate==0.26.1

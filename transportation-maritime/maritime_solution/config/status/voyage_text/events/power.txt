@@ -1,0 +1,18 @@
+Below is the data with events relates to how is the power consumption pattern of the ship during a Container ship voyage 
+
+# Events
+
+| Time | Event | Power Consumption | Comment |
+|------|-------|-------------------|---------|
+| 2024-02-14 12:12:06 | Max Power Consumption | 963.0 kwh | Maximum power consumption of the whole voyage |
+| 2024-02-14 12:10:36 | Min Power Consumption | 291.0 kwh | Minimum power consumption of the whole voyage |
+| 2024-02-14T12:10:51.223942Z | Power Consumption Alert | 804.0 kwh | Power consumption crossed threshold value |
+| 2024-02-14T12:11:06.194354Z | Power Consumption Alert | 819.0 kwh | Power consumption crossed threshold value |
+| 2024-02-14T12:11:21.155307Z | Power Consumption Alert | 855.0 kwh | Power consumption crossed threshold value |
+| 2024-02-14T12:11:21.155326Z | Power Consumption Alert | 816.0000000000001 kwh | Power consumption crossed threshold value |
+| 2024-02-14T12:11:36.114170Z | Power Consumption Alert | 819.0 kwh | Power consumption crossed threshold value |
+| 2024-02-14T12:11:36.114329Z | Power Consumption Alert | 855.0 kwh | Power consumption crossed threshold value |
+| 2024-02-14T12:11:36.114345Z | Power Consumption Alert | 816.0000000000001 kwh | Power consumption crossed threshold value |
+| 2024-02-14T12:11:51.075575Z | Power Consumption Alert | 813.0 kwh | Power consumption crossed threshold value |
+| 2024-02-14T12:12:06.045155Z | Power Consumption Alert | 840.0 kwh | Power consumption crossed threshold value |
+| 2024-02-14T12:12:06.045174Z | Power Consumption Alert | 810.0 kwh | Power consumption crossed threshold value |
