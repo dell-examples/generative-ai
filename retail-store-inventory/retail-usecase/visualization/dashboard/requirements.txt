@@ -1,0 +1,4 @@
+gradio==3.36.1
+plotly==5.15.0
+influxdb==5.3.1
+py-cpuinfo==9.0.0
