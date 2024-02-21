@@ -1,0 +1,91 @@
+.gradio-container {
+    background-color: rgba(36, 36, 36)
+}
+
+.input[type=text].svelte-4xt1ch, input[type=password].svelte-4xt1ch, input[type=email].svelte-4xt1ch, textarea.svelte-4xt1ch {
+    background-color: black;
+}
+thead.svelte-8hrj8a.svelte-8hrj8a.svelte-8hrj8a {
+    display: none;
+}
+#row1 {
+    height : 100px;
+    width: 100%;
+}
+
+.secondary.svelte-1ipelgc {
+    background : none;
+} 
+
+#stream {
+    background-color: rgb(0, 0, 0);
+    height : 620px;
+}
+#box2 {
+    background-color: rgb(0, 0, 0)
+}
+#decoded {
+    background-color: rgba(27, 27, 27, 0.875);
+    font: small-caps bold 30px/1 sans-serif;
+    height : 110px;
+    width : 50px;
+}
+
+#encoded {
+    background-color: rgba(27, 27, 27, 0.875);
+    font: small-caps bold 30px/1 sans-serif;
+    height : 110px;
+    width : 50px;
+}
+
+#curr_items {
+    background-color: rgba(27, 27, 27, 0.875);
+    font: small-caps bold 30px/1 sans-serif;
+    height : 150px;
+    width : 50px;
+}
+
+#total_items {
+        background-color: rgba(27, 27, 27, 0.875);
+        font: small-caps bold 30px/1 sans-serif;
+        height : 150px;
+        width : 50px;
+    }
+
+#change_fps {
+    background-color: rgba(27, 27, 27, 0.875);
+    font: small-caps bold 24px/1 sans-serif;
+    height : 45px;
+    width : 50px;
+}
+
+#info {
+    background-color: rgba(27, 27, 27, 0.875);
+    font-size:10px;
+}
+
+#modename {
+    text-align: center;
+    height: 20px;
+    font-size: 18px;
+    min-width: fit-content !important;
+}
+
+#box3 {
+    background-color: rgb(0, 0, 0)
+}
+#box4 {
+    background-color: rgb(0, 0, 0)
+}
+
+#cpu {
+    font: small-caps bold 24px/1 sans-serif;
+    background-color: black;
+}
+#gpu {
+    font: small-caps bold 24px/1 sans-serif;
+}
+
+.generating.svelte-gjihhp {
+    border: 2px solid black
+}

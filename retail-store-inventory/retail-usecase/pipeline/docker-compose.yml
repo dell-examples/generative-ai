@@ -1,0 +1,12 @@
+version: "3"
+services:
+  pipeline:
+    container_name: pipeline
+    build:
+      context: ./retail
+      dockerfile: Dockerfile
+    network_mode: host
+    volumes:
+      - ../config:/src/config
+      - ./app.log:/src/app.log
+    restart: always
