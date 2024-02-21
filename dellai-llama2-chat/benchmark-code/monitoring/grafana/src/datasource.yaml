@@ -12,7 +12,7 @@ datasources:
       defaultBucket: telegraf
       tlsSkipVerify: true
     secureJsonData:
-      token: 3e3caff1da7fb6d24134ed7d2017c22452823bb7130bcf2322d2af6756c499eb
+      token: your-token 
 
 
 #GPT2 medium default
