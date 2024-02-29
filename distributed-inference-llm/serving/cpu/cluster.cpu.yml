@@ -1,0 +1,205 @@
+# Created by scalers.ai for Dell
+# CPU Cluster Configuration File
+
+apiVersion: ray.io/v1
+kind: RayService
+metadata:
+  name: llama2-cpu
+spec:
+  serviceUnhealthySecondThreshold: 900
+  deploymentUnhealthySecondThreshold: 300
+  serveConfigV2: |
+    proxy_location: HeadOnly
+    http_options:
+      host: 0.0.0.0
+      port: 8001
+    applications:
+      - name: llama2-cpu-intel
+        import_path: inference:typed_app_builder
+        route_prefix: /cpu
+        args:
+          model_name: "<Model Path>" # add model path here
+          data_type: int8
+          max_new_tokens: 256
+          temperature: 1.0
+          batch_timeout: 0.1
+          batch_size: 1
+          hf_token: <HF_TOKEN> # add your huggingface token here
+          target_device: "INTEL"
+        deployments:
+        - name: CPUDeployment
+          num_replicas: 2
+          max_concurrent_queries: 1
+          ray_actor_options:
+            num_cpus: 224
+      - name: llama2-amd
+        import_path: inference:typed_app_builder
+        route_prefix: /acpu
+        args:
+          model_name: "<Model Path>" # add model path here
+          data_type: int8
+          max_new_tokens: 256
+          temperature: 1.0
+          batch_timeout: 0.1
+          batch_size: 1
+          hf_token: <HF_TOKEN> # add your huggingface token here
+          target_device: "AMD"
+        deployments:
+        - name: CPUDeployment
+          num_replicas: 1
+          max_concurrent_queries: 1
+          ray_actor_options:
+            num_cpus: 128
+            amd_cpu: 1
+  rayClusterConfig:
+    rayVersion: '2.8.1'
+    # Ray head pod template.
+    headGroupSpec:
+      rayStartParams:
+        dashboard-host: '0.0.0.0'
+        num-cpus: "220" # using head as the worker node
+      # Pod template
+      template:
+        metadata:
+          labels:
+            name: ray-cpu-head
+        spec:
+          containers:
+          - name: ray-cpu-head
+            image: infer.cr.io/cpu_intel:latest
+            volumeMounts:
+              - mountPath: /tmp/ray
+                name: ray-logs
+              - name: nfs-pv-demo
+                mountPath: /models
+            resources:
+              limits:
+                cpu: "220"
+                memory: "800G"
+              requests:
+                cpu: "220"
+                memory: "800G"
+          volumes:
+            - name: ray-logs
+              emptyDir: {}
+            - name: nfs-pv-demo
+              persistentVolumeClaim:
+                claimName: nfs-pvc-demo
+          imagePullSecrets:
+            - name: cr-login
+          nodeSelector:
+              feature.node.kubernetes.io/cpu-model.vendor_id: Intel
+              # kubernetes.io/hostname: xe9680
+    workerGroupSpecs:
+      - replicas: 1
+        minReplicas: 1
+        maxReplicas: 1
+        groupName: cpu-amd
+        rayStartParams:
+          num-cpus: "256"
+          resources: '"{\"amd_cpu\": 10}"'
+        template:
+          spec:
+            containers:
+            - name: cpu-amd
+              image: infer.cr.io/cpu_amd:latest
+              resources:
+                limits:
+                  cpu: "256"
+                  memory: "800G"
+                requests:
+                  cpu: "256"
+                  memory: "800G"
+              volumeMounts:
+                - name: nfs-pv-demo
+                  mountPath: /models
+            volumes:
+              - name: nfs-pv-demo
+                persistentVolumeClaim:
+                  claimName: nfs-pvc-demo
+            imagePullSecrets:
+              - name: cr-login
+            nodeSelector:
+              feature.node.kubernetes.io/cpu-model.vendor_id: AMD
+              # kubernetes.io/hostname: xe8545
+      - replicas: 1
+        minReplicas: 1
+        maxReplicas: 1
+        groupName: cpu-intel
+        rayStartParams:
+          num-cpus: "224"
+        template:
+          spec:
+            containers:
+            - name: cpu-intel
+              image: infer.cr.io/cpu_intel:latest
+              resources:
+                limits:
+                  cpu: "224"
+                  memory: "800G"
+                requests:
+                  cpu: "224"
+                  memory: "800G"
+              volumeMounts:
+                - name: nfs-pv-demo
+                  mountPath: /models
+            volumes:
+              - name: nfs-pv-demo
+                persistentVolumeClaim:
+                  claimName: nfs-pvc-demo
+            imagePullSecrets:
+              - name: cr-login
+            nodeSelector:
+              feature.node.kubernetes.io/cpu-model.vendor_id: Intel
+              # kubernetes.io/hostname: user
+      - replicas: 1
+        minReplicas: 1
+        maxReplicas: 1
+        groupName: cpu-amd-2
+        rayStartParams:
+          num-cpus: "128"
+          resources: '"{\"amd_cpu\": 10}"'
+        template:
+          spec:
+            containers:
+            - name: cpu-amd-2
+              image: traindell.azurecr.io/cpus:t1
+              resources:
+                limits:
+                  cpu: "128"
+                  memory: "800G"
+                requests:
+                  cpu: "128"
+                  memory: "800G"
+              volumeMounts:
+                - name: nfs-pv-demo
+                  mountPath: /models
+            volumes:
+              - name: nfs-pv-demo
+                persistentVolumeClaim:
+                  claimName: nfs-pvc-demo
+            imagePullSecrets:
+              - name: cr-login
+            nodeSelector:
+              feature.node.kubernetes.io/cpu-model.vendor_id: AMD
+              # kubernetes.io/hostname: 7625-amd
+---
+# Ray dashboard port(8265) service
+# Ray Server endpoint(8000) service
+apiVersion: v1
+kind: Service
+metadata:
+  name: ray-cpu-head-dashboard-port
+spec:
+  selector:
+    name: ray-cpu-head
+  type: NodePort
+  ports:
+  - port: 8265
+    name: "dashboard"
+    targetPort: 8265
+    nodePort: 30266
+  - port: 8001
+    name: "endpoint"
+    targetPort: 8001
+    nodePort: 30801
