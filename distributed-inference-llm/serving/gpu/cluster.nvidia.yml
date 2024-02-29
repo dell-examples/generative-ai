@@ -1,0 +1,163 @@
+# Created by scalers.ai for Dell
+# GPU Cluster Configuration File
+
+apiVersion: ray.io/v1
+kind: RayService
+metadata:
+  name: llama-nvidia
+spec:
+  serviceUnhealthySecondThreshold: 900
+  deploymentUnhealthySecondThreshold: 300
+  serveConfigV2: |
+    proxy_location: HeadOnly
+    http_options:
+      host: 0.0.0.0
+      port: 8000
+    applications:
+      - name: llama2
+        import_path: inference.typed_app_builder
+        route_prefix: /
+        args:
+          gpu_count: 4
+          model_name: "MODEL_PATH"
+          data_type: bfloat16
+          batch_size: 256
+          hf_token: <add hugging token here>
+        deployments:
+        - name: VLLMPredictDeployment
+          num_replicas: 4
+          max_concurrent_queries: 256
+          ray_actor_options:
+            num_cpus: 20
+  rayClusterConfig:
+    rayVersion: '2.8.1'
+    # Ray head pod template.
+    headGroupSpec:
+      rayStartParams:
+        dashboard-host: '0.0.0.0'
+        num-gpus: "8" # using head as the worker node
+      # Pod template
+      template:
+        metadata:
+          labels:
+            name: ray-gpu-head
+        spec:
+          containers:
+          - name: ray-gpu-head
+            image: infer.cr.io/nvidia:latest
+            ports:
+            - containerPort: 6379
+              name: gcs
+            - containerPort: 8265
+              name: dashboard
+            - containerPort: 10001
+              name: client
+            - containerPort: 8000
+              name: serve
+            resources:
+              limits:
+                cpu: "160"
+                memory: "300G"
+                nvidia.com/gpu: 8
+              requests:
+                cpu: "160"
+                memory: "300G"
+                nvidia.com/gpu: 8
+            volumeMounts:
+              - name: nfs-pv-demo
+                mountPath: /models
+              - mountPath: /tmp/ray
+                name: ray-logs
+          volumes:
+            - name: ray-logs
+              emptyDir: {}
+            - name: nfs-pv-demo
+              persistentVolumeClaim:
+                claimName: nfs-pvc-demo
+          imagePullSecrets:
+            - name: cr-login
+          nodeSelector:
+              kubernetes.io/hostname: xe9680
+    workerGroupSpecs:
+    - replicas: 1
+      minReplicas: 1
+      maxReplicas: 1
+      groupName: gpu-nvidia
+      rayStartParams:
+        num-gpus: "4"
+      template:
+        spec:
+          runtimeClassName: nvidia
+          containers:
+          - name: ray-worker
+            image: infer.cr.io/nvidia:latest
+            resources:
+              limits:
+                cpu: "160"
+                memory: "300G"
+                nvidia.com/gpu: "4"
+              requests:
+                cpu: "160"
+                memory: "300G"
+                nvidia.com/gpu: "4"
+            volumeMounts:
+              - name: nfs-pv-demo
+                mountPath: /models
+          volumes:
+            - name: nfs-pv-demo
+              persistentVolumeClaim:
+                claimName: nfs-pvc-demo
+          imagePullSecrets:
+            - name: cr-login
+          nodeSelector:
+            kubernetes.io/hostname: xe8545
+    - replicas: 1
+      minReplicas: 1
+      maxReplicas: 1
+      groupName: gpu-nvidia-h100
+      rayStartParams:
+        num-gpus: "4"
+      template:
+        spec:
+          runtimeClassName: nvidia
+          containers:
+          - name: ray-worker
+            image: infer.cr.io/nvidia:latest
+            resources:
+              limits:
+                cpu: "160"
+                memory: "300G"
+                nvidia.com/gpu: 4
+              requests:
+                cpu: "160"
+                memory: "300G"
+                nvidia.com/gpu: 4
+            volumeMounts:
+              - name: nfs-pv-demo
+                mountPath: /models
+          volumes:
+            - name: nfs-pv-demo
+              persistentVolumeClaim:
+                claimName: nfs-pvc-demo
+          imagePullSecrets:
+            - name: cr-login
+---
+# Ray dashboard port(8265) service
+# Ray Server endpoint(8000) service
+apiVersion: v1
+kind: Service
+metadata:
+  name: ray-head-dashboard-port
+spec:
+  selector:
+    name: ray-gpu-head
+  type: NodePort
+  ports:
+  - port: 8265
+    name: "dashboard"
+    targetPort: 8265
+    nodePort: 30265 # update the ray dashboard port here
+  - port: 8000
+    name: "endpoint"
+    targetPort: 8000
+    nodePort: 30800 # update the inferene endpoint port here

@@ -1,0 +1,12 @@
+# Created by scalers.ai for Dell
+# Dockerfile for creating serving docker image for AMD GPU
+
+FROM embeddedllminfo/vllm-rocm:vllm-v0.2.6
+
+WORKDIR /app
+
+RUN python3 -m pip install --no-cache-dir ray[serve]==2.8.1 fastapi==0.104.1
+
+COPY inference.py /app
+
+EXPOSE 8000

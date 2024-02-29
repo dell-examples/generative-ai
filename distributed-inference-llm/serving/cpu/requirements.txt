@@ -1,0 +1,4 @@
+ray[serve]==2.8.1
+bigdl-llm[all]==2.4.0
+fastapi==0.104.1
+optimum[onnxruntime]==1.16.1

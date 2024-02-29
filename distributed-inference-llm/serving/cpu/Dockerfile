@@ -1,0 +1,62 @@
+# Created by scalers.ai for Dell
+# Dockerfile for creating serving docker image for CPU
+
+FROM ubuntu:22.04
+
+RUN apt-get update && \
+    DEBIAN_FRONTEND=noninteractive apt-get install -y \
+    build-essential \
+    libssl-dev \
+    zlib1g-dev \
+    libbz2-dev \
+    libreadline-dev \
+    libsqlite3-dev \
+    wget \
+    vim \
+    curl \
+    llvm \
+    libncurses5-dev \
+    libncursesw5-dev \
+    xz-utils \
+    tk-dev \
+    libffi-dev \
+    liblzma-dev \
+    python3-openssl \
+    python3 \
+    python3-pip \
+    git \
+    && rm -rf /var/lib/apt/lists/*
+
+RUN curl https://pyenv.run | bash
+
+ENV PATH="/root/.pyenv/bin:/root/.pyenv/shims:$PATH"
+ENV PYENV_ROOT="/root/.pyenv"
+
+RUN pyenv install 3.10.13 && \
+    pyenv global 3.10.13
+
+WORKDIR /app
+
+COPY requirements.txt /app/
+
+RUN pip3 install --no-cache-dir -r requirements.txt
+
+RUN apt-get purge -y \
+    build-essential \
+    libssl-dev \
+    zlib1g-dev \
+    libbz2-dev \
+    libreadline-dev \
+    libsqlite3-dev \
+    llvm \
+    libncurses5-dev \
+    libncursesw5-dev \
+    xz-utils \
+    tk-dev \
+    libffi-dev \
+    liblzma-dev \
+    && apt-get autoremove -y && apt-get clean && rm -rf /var/lib/apt/lists/*
+
+COPY inference.py /app
+
+EXPOSE 8000
