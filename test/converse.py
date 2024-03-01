@@ -51,17 +51,17 @@ EXAMPLES = [
 
 				[ 
 
-					"Create an advertisement for Dell Technologies PowerEdge servers.  Please include an interesting headline and product description.  Be persuasive to the IT decision maker audience.",
-                   "Create 5 engaging tweets highlighting the key advantages of using Dell Technologies solutions for hybrid cloud management.",
-				   "Outline a fun and imaginative social media campaign that takes followers on a virtual world tour of Dell's global sustainability efforts using engaging storytelling."
+					"Create an ad for Dell Technologies PowerEdge servers with an interesting headline and product description. Provide your answer first in English, and then in French language.",
+                   "Create 3 engaging tweets highlighting the key advantages of using Dell Technologies solutions for Generative AI.",
+				   "Outline a fun social media campaign that takes followers on a virtual world tour of Dell's global sustainability efforts using engaging storytelling."
                ],
 
 ### FINANCIAL ANALYSIS
 
                [
                    "Summarize the key financial takeaways from Dell’s latest SEC filings, focusing on investment opportunities and risk factors.",
-                   "Provide an analysis of the competitive landscape based on Nvidia’s latest SEC filings, identifying trends and opportunities for strategic positioning.",
-				   "Compare Dell's financial performance with its main competitors in the storage market over the last five years, focusing on revenue and market share."
+                   "Provide an analysis of the competitive landscape based on Nvidia’s latest SEC filings, identify trends and opportunities for strategic positioning.",
+				   "Compare Dell's financial performance with its main competitors in the storage market, focusing on revenue and market share."
                ],
 
 ### SALES
