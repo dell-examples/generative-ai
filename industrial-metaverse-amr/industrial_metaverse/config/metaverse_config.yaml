@@ -1,0 +1,28 @@
+# Created by Scalers AI for Dell Inc.
+
+deploy_single: true
+
+robot_config:
+  NOVA_CARTER_B1:
+      url: rtsp://localhost:8554/amr1
+      broker: localhost
+      spill_topic: cam1
+      robot_name: CarterNav1
+      camera_name: AMRCam1
+      udp_port: 1234
+      visualize:  true
+
+  NOVA_CARTER_B2:
+      url: rtsp://localhost:8554/amr2
+      broker: localhost
+      spill_topic: cam2
+      robot_name: CarterNav2
+      camera_name: AMRCam2
+      udp_port: 1235
+      visualize:  true
+
+zone_config:
+    zone1: REACTION_CHAMBER_Z4
+    zone2: REACTION_CHAMBER_Z5
+    zone3: COMPRESSION_STATION_21
+    zone4: COMPRESSION_STATION_50

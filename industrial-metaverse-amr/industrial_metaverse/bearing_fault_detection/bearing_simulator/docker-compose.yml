@@ -1,0 +1,15 @@
+# Created by Scalers AI for Dell Inc.
+
+version: "3.9"
+
+services:
+  # sensor data simulator service
+  bearing-sim:
+    image: bearing-simulator
+    build:
+      context: ./data_simulator
+      dockerfile: Dockerfile
+    volumes:
+      - ../config:/config
+      - ./bearing_dataset:/simulator_data
+    network_mode: host

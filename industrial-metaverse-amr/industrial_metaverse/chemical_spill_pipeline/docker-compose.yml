@@ -1,0 +1,24 @@
+# Created by Scalers AI for Dell Inc.
+
+version: "3.9"
+
+services:
+  spill_detection:
+    image: pipeline
+    build:
+      context: ./pipeline
+      dockerfile: Dockerfile
+    network_mode: host
+    deploy:
+      resources:
+        reservations:
+          devices:
+            - driver: nvidia
+              device_ids: ['1']
+              capabilities: [gpu]
+      restart_policy:
+        condition: unless-stopped
+        delay: 5s
+        window: 120s
+    volumes:
+      - ../config:/config

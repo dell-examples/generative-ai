@@ -1,0 +1,43 @@
+# Created by Scalers AI for Dell Inc.
+
+version: "3.9"
+
+services:
+  receiver:
+    container_name: receiver
+    build:
+      context: ./receive
+      dockerfile: Dockerfile
+    network_mode: host
+    volumes:
+      - ../config:/src/config
+      - ./app.log:/src/app.log
+    restart: always
+
+  visualization:
+    image: visualization
+    build:
+      context: ./visualization
+      dockerfile: Dockerfile.visualization
+    container_name: visualization
+    network_mode: host
+    volumes:
+      - ../config/:/config
+
+  signaling:
+    image: signaling
+    build:
+      context: ./webrtc_signaling
+      dockerfile: Dockerfile.signaling
+    network_mode: host
+
+  dashboard:
+    build:
+      context: ./dashboard
+      dockerfile: Dockerfile
+    volumes:
+      - ../config:/src/config
+    network_mode: host
+    environment:
+    - SERVER_IP=$SERVER_IP
+    - DASHBOARD_IP=$DASHBOARD_IP

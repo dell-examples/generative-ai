@@ -1,0 +1,4 @@
+asyncua==1.0.6
+PyYAML==6.0.1
+pandas==2.2.0
+Pyarrow==15.0.0

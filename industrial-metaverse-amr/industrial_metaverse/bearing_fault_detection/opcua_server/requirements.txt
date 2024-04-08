@@ -1,0 +1,2 @@
+asyncua==1.0.6
+PyYAML==6.0.1
