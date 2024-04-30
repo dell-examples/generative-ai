@@ -268,7 +268,7 @@ dependencies:
       - typing-extensions==4.9.0
       - typing-inspect==0.9.0
       - tzdata==2023.3
-      - unstructured==0.13.0
+      - unstructured==0.13.6
       - unstructured-client==0.18.0
       - urllib3==2.2.1
       - uvicorn==0.24.0.post1
