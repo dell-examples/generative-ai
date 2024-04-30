@@ -112,7 +112,8 @@ dependencies:
       - contourpy==1.2.0
       - cycler==0.12.1
       - cython==3.0.5
-      - dataclasses-json==0.5.14
+#      - dataclasses-json==0.5.14
+      - dataclasses-json==0.6.4
       - dataclasses-json-speakeasy==0.5.11
       - datasets==2.14.6
       - deprecated==1.2.14
@@ -157,8 +158,8 @@ dependencies:
       - langchain-community==0.0.33
       - langchain-core==0.1.44
       - langchain-text-splitters==0.0.1
-      - langchain-util==0.1.7
-      - langchainplus-sdk==0.0.20
+#      - langchain-util==0.1.7
+#      - langchainplus-sdk==0.0.20
       - langdetect==1.0.9
       - langsmith==0.1.48
       - lxml==5.1.0
@@ -207,7 +208,7 @@ dependencies:
       - orjson==3.10.1
       - overrides==7.4.0
       - pandas==1.5.3
-      - pandasai==1.5.19
+#      - pandasai==1.5.19
       - pdf2image==1.16.3
       - peft==0.6.0
       - pillow==10.1.0
