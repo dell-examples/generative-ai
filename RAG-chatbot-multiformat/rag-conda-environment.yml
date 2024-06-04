@@ -2,6 +2,7 @@ name: rag
 channels:
   - conda-forge
 dependencies:
+  - python=3.10
   - _libgcc_mutex=0.1=conda_forge
   - _openmp_mutex=4.5=2_gnu
   - asttokens=2.4.1=pyhd8ed1ab_0
