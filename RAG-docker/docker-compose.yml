@@ -1,0 +1,25 @@
+services:
+  gradio-app:
+    image: rag-chatbot
+    build:
+      context: .
+      dockerfile: Dockerfile
+    env_file:
+      - .env
+    ports:
+#      - "7860:7860"    #### use when accessing on laptop internally to localhost
+#      - "172.16.14.195:7860:7860"    #### use when accessing through browser on jump box
+      - "YOUR-IP:7860:7860"    
+    volumes:
+      - ${LOCAL_WORKSPACE_FOLDER:-.}/data:/data
+      - ${LOCAL_WORKSPACE_FOLDER:-.}/samples:/workspace/samples
+    # command: bash -c "pip install gradio && python3 app.py"
+    deploy:
+      resources:
+        reservations:
+          devices:
+            - driver: nvidia
+              count: 1
+              capabilities: [ gpu ]
+volumes:
+  rag-chatbot-data:

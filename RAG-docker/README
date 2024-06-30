@@ -1,0 +1,17 @@
+MUST INSTALL DOCKER AND THEN NVIDIA CONTAINER TOOLKIT
+
+https://docs.docker.com/engine/install/ubuntu/
+
+https://docs.nvidia.com/datacenter/cloud-native/container-toolkit/latest/install-guide.htm
+
+
+then...
+
+1)  run ./build_docker.sh
+
+this will build the image and place it inside the local docker image registry on the host
+
+
+2)  
+
+
