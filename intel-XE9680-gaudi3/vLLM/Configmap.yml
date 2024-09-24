@@ -1,0 +1,103 @@
+---
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: vllm
+data:
+  init.sh: |
+    #!/bin/bash
+ 
+    if [ -d "llmperf" ] ; then
+      echo "llmperf directory exists"
+    else
+      git clone https://github.com/ray-project/llmperf.git -b v2.0
+    fi
+ 
+    url='http://vllm:8000/v1/chat/completions'
+    
+    # MODEL CAN BE CHANGED AS NEEDED
+    payload=$(cat <<-END
+    {
+      "model": meta-llama/Meta-Llama-3-8B,
+      "messages": [
+        {"role": "system", "content": "You are a helpful assistant."},
+        {"role": "user", "content": "Who won the world series in 2020?"}
+      ]
+    }
+    END
+    )
+     # Retry the API request until it succeeds
+    while true; do
+    response=$(curl -sf -X POST \
+             -H "Content-Type: application/json" \
+             -d "$payload" \
+             "$url")
+    status=$?
+ 
+    if [ $status -eq 0 ]; then
+      echo "API request successful!"
+      echo "$response" | jq '.'
+      break
+    else
+      echo "Error: Failed to fetch response from API. Retrying in 10 seconds..." >&2
+      sleep 10
+    fi
+    done
+
+  run_vllm_backend.sh: |
+    #!/bin/bash
+ 
+    #Authenticate with Hugging Face
+    huggingface-cli login --token $HUGGING_FACE_HUB_TOKEN
+ 
+    # Start vLLM server in the background
+    python3 -m vllm.entrypoints.openai.api_server \
+    --model $MODEL \
+    --dtype bfloat16 \
+    --device hpu \
+    --host 0.0.0.0 \
+    --enforce-eager \
+    --tensor-parallel-size $TENSOR_PARALLEL_SIZE \
+    --port 8000 || { echo "vLLM server failed to start"; exit 1;}
+    # ADD THIS IF NEEDED
+    #--swap-space 16 \
+ 
+ 
+  benchmark.sh: |
+    #!/bin/bash
+ 
+    #apt update && apt install jq -y
+ 
+    cd llmperf
+    #python3 -m pip install -e .
+ 
+    #export OPENAI_API_BASE=http://vllm.default.svc.cluster.local/v1
+ 
+    # CHANGE DIRECTORY AS NEEDED FOR OTHER MODELS 
+    mkdir -p /root/metrics/meta-llama
+ 
+    # THIS IS A LOOP TO SWEEP CONCURRENT USERS, FOR A GIVEN INPUT/OUTPUT TOKENS. IT CAN BE MODIFIED AS NEEDED
+    for CONCURRENT in 1 32 64 128; do
+      for OUTPUT in  1024 ; do
+        for INPUT in 1024 ; do
+          echo "CONCURRENT: $CONCURRENT"
+          echo "INPUT: $INPUT"
+          echo "OUTPUT: $OUTPUT"
+          hl-smi --query-aip=timestamp,name,bus_id,driver_version,index,serial,uuid,module_id,temperature.aip,utilization.aip,memory.total,memory.free,memory.used,power.draw -f csv,noheader -l 2 2>&1 > /root/metrics/$MODEL-$CONCURRENT-$OUTPUT-$INPUT.log &
+          pid=$!
+          python3 token_benchmark_ray.py \
+          --model $MODEL \
+          --mean-input-tokens $INPUT \
+          --stddev-input-tokens 0 \
+          --mean-output-tokens $OUTPUT \
+          --stddev-output-tokens 0 \
+          --max-num-completed-requests 2000 \
+          --timeout 2400 \
+          --num-concurrent-requests $CONCURRENT \
+          --results-dir result_outputs \
+          --llm-api openai \
+          --additional-sampling-params {}
+          kill $pid
+        done
+      done
+    done

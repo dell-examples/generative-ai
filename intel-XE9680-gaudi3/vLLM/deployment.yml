@@ -1,0 +1,123 @@
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: vllm-backend
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: vllm-backend
+  template:
+    metadata:
+      labels:
+        app: vllm-backend
+    spec:
+      hostIPC: true
+      hostNetwork: true
+      initContainers:
+      - name: init-vllm
+        image: vault.habana.ai/gaudi-docker/1.17.1/ubuntu22.04/habanalabs/pytorch-installer-2.3.1
+        command: ["hl-smi"]
+        env:
+        # MODEL CAN BE CHANGED AS NEEDED
+        - name: MODEL
+          value: meta-llama/Meta-Llama-3-8B
+        resources:
+          limits:
+            habana.ai/gaudi: 1
+            memory: 809Gi
+            hugepages-2Mi: 9500Mi
+          requests:
+            habana.ai/gaudi: 1
+            memory: 809Gi
+            hugepages-2Mi: 9500Mi
+ 
+      containers:
+      - name: vllm-backend
+        # Replace dockerregistryIP with docker private registry IP address
+        image: dockerregistryIP:5500/vllm_backend:latest
+        workingDir: /vllm-fork
+        command:
+          - bash
+        args:
+          - -c
+          - '/root/config/run_vllm_backend.sh'
+        env:
+        - name: MODEL
+          value: meta-llama/Meta-Llama-3-8B
+        - name: HUGGING_FACE_HUB_TOKEN
+          valueFrom:
+            secretKeyRef:
+              name: hf-token
+              key: HF_TOKEN
+        - name: OMPI_MCA_btl_vader_single_copy_mechanism
+          value: none
+        - name: VLLM_PROMPT_BS_BUCKET_MIN
+          value: "1"
+        - name: VLLM_PROMPT_BS_BUCKET_STEP
+          value: "32"
+        - name: VLLM_PROMPT_BS_BUCKET_MAX
+          value: "64"
+        - name: VLLM_DECODE_BS_BUCKET_MIN
+          value: "1"
+        - name: VLLM_DECODE_BS_BUCKET_STEP
+          value: "128"
+        - name: VLLM_DECODE_BS_BUCKET_MAX
+          value: "128"
+        - name: VLLM_PROMPT_SEQ_BUCKET_MIN
+          value: "128"
+        - name: VLLM_PROMPT_SEQ_BUCKET_STEP
+          value: "128"
+        - name: VLLM_PROMPT_SEQ_BUCKET_MAX
+          value: "1024"
+        - name: VLLM_DECODE_SEQ_BUCKET_MIN
+          value: "128"
+        - name: VLLM_DECODE_SEQ_BUCKET_STEP
+          value: "128"
+        - name: VLLM_DECODE_SEQ_BUCKET_MAX
+          value: "2048"
+        - name: PT_HPU_LAZY_MODE
+          value: "0"
+        # CHANGE THE TENSOR_PARALLEL_SIZE VARIABLE BASED ON # CARDS  
+        - name: TENSOR_PARALLEL_SIZE
+          value: "1"
+        - name: PT_HPU_ENABLE_LAZY_COLLECTIVES
+          value: "true"
+            
+        ports:
+        - containerPort: 8000
+        resources:
+          # Change resources as needed to support bigger models
+          limits:
+            habana.ai/gaudi: 1
+            memory: 809Gi
+            hugepages-2Mi: 95000Mi
+          requests:
+            habana.ai/gaudi: 1
+            memory: 809Gi
+            hugepages-2Mi: 95000Mi
+ 
+        securityContext:
+          privileged: true
+          runAsUser: 0
+        volumeMounts:
+        - name: data
+          mountPath: /root
+        - name: config
+          mountPath: /root/config
+        - name: dshm
+          mountPath: /dev/shm
+      volumes:
+        - name: config
+          configMap:
+            name: vllm
+            defaultMode: 0500
+        - name: data
+          #emptyDir: {}
+          hostPath:
+            path: /scratch-1/vllm/
+            type: Directory
+        - name: dshm
+          emptyDir:
+            medium: Memory

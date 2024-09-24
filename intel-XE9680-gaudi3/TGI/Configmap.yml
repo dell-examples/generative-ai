@@ -1,0 +1,107 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: tgi
+data:
+  benchmark.sh: |
+    #!/bin/bash
+ 
+    apt update && apt install jq -y
+ 
+    cd llmperf
+    python3 -m pip install -e .
+ 
+    export HUGGINGFACE_API_BASE=http://tgi/generate_stream
+ 
+    # CHANGE BASED ON MODEL
+    mkdir -p /root/metrics/meta-llama
+ 
+    # THIS IS A LOOP TO SWEEP CONCURRENT USERS, FOR A GIVEN INPUT/OUTPUT TOKENS. IT CAN BE MODIFIED AS NEEDED
+    for CONCURRENT in 1 32 64 128 ; do
+          INPUT=128
+          OUTPUT=128
+          echo "CONCURRENT: $CONCURRENT"
+          echo "INPUT: $INPUT"
+          echo "OUTPUT: $OUTPUT"
+          mkdir -p /root/metrics
+          hl-smi --query-aip=timestamp,name,bus_id,driver_version,index,serial,uuid,module_id,temperature.aip,utilization.aip,memory.total,memory.free,memory.used,power.draw -f csv,noheader -l 2 2>&1 > /root/metrics/$MODEL-$INPUT-$CONCURRENT-$OUTPUT-$INPUT-$(date +%s).log &
+          pid=$!
+          python3 token_benchmark_ray.py \
+          --model huggingface/$MODEL \
+          --mean-input-tokens $INPUT \
+          --stddev-input-tokens 0 \
+          --mean-output-tokens $OUTPUT \
+          --stddev-output-tokens 0 \
+          --max-num-completed-requests 100 \
+          --timeout 2400 \
+          --num-concurrent-requests $CONCURRENT \
+          --results-dir result_outputs \
+          --llm-api litellm \
+          --additional-sampling-params {}
+          kill $pid
+          sleep 60
+    done
+
+  init.sh: |
+    #!/bin/bash
+ 
+    if [ -d "llmperf" ] ; then
+      echo "llmperf directory exists"
+    else
+      git clone https://github.com/ray-project/llmperf.git -b v2.0
+    fi
+ 
+    cd llmperf
+    python3 -m pip install -e .
+ 
+    until curl -sf http://tgi/info; do echo waiting for tgi; sleep 5; done
+
+  init_quant.sh: |
+    #!/bin/bash
+ 
+    hl-smi
+ 
+    if [ -d "optimum-habana" ] ; then
+      echo "optimum-habana directory exists"
+    else
+      git clone https://github.com/huggingface/optimum-habana.git
+    fi
+ 
+ 
+    cd optimum-habana/examples/text-generation
+    python3 -m pip install git+https://github.com/huggingface/optimum-habana.git
+    python3 -m pip install -r requirements.txt
+    python3 -m pip install git+https://github.com/HabanaAI/DeepSpeed.git@1.17.0
+ 
+    QUANT_CONFIG=/root/config/maxabs_measure.json python run_generation.py \
+    --model_name_or_path $MODEL \
+    --use_hpu_graphs \
+    --use_kv_cache \
+    --limit_hpu_graphs \
+    --bucket_size 128 \
+    --max_new_tokens 128 \
+    --batch_size 1 \
+    --bf16
+  
+  #CHANGE MODEL NAME FOR PATH BELOW AS NEEDED  
+  maxabs_measure.json: |
+    {
+      "method": "HOOKS",
+      "mode": "MEASURE",
+      "observer": "maxabs",
+      "allowlist": {"types": [], "names":  []},
+      "blocklist": {"types": [], "names":  []},
+      "dump_stats_path": "/data/llama-3-8b-fp8/hqt_output/measure",
+      "dump_stats_xlsx_path": "/data/llama-3-8b-fp8/hqt_output/measure/fp8stats.xlsx"
+    }
+  maxabs_quant.json: |
+    {
+      "method": "HOOKS",
+      "mode": "QUANTIZE",
+      "observer": "maxabs",
+      "scale_method": "maxabs_hw",
+      "allowlist": {"types": [], "names":  []},
+      "blocklist": {"types": [], "names":  []},
+      "dump_stats_path": "/data/llama-3-8b-fp8/hqt_output/measure",
+      "dump_stats_xlsx_path": "/data/llama-3-8b-fp8/hqt_output/measure/fp8stats.xlsx"
+    }

@@ -1,0 +1,132 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: tgi
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: tgi
+  template:
+    metadata:
+      labels:
+        app: tgi
+    spec:
+      containers:
+      # Values below are provided as a reference. Further tuning is needed based on model sizes. 
+      - args:
+        - --model-id
+        - $(MODEL)
+        - --max-batch-prefill-tokens
+        - "4096"
+        - --max-batch-total-tokens
+        - "49152"
+        - --max-input-length
+        - "1024"
+        - --max-total-tokens
+        - "3072"
+        - --max-batch-size
+        - "16"
+        env:
+        # Model can be modified as needed
+        - name: MODEL
+          value: meta-llama/Meta-Llama-3-8B
+        - name: QUANT_CONFIG
+          value: /root/config/maxabs_quant.json
+        - name: BATCH_BUCKET_SIZE
+          value: "16"
+        - name: HF_TOKEN
+          valueFrom:
+            secretKeyRef:
+              key: HF_TOKEN
+              name: hf-token
+        - name: PT_HPU_ENABLE_LAZY_COLLECTIVES
+          value: "true"
+        - name: PREFILL_BATCH_BUCKET_SIZE
+          value: "2"
+        - name: PAD_SEQUENCE_TO_MULTIPLE_OF
+          value: "256"
+        - name: OMPI_MCA_btl_vader_single_copy_mechanism
+          value: none
+        - name: TEXT_GENERATION_SERVER_IGNORE_EOS_TOKEN
+          value: "true"
+        - name: MAX_TOTAL_TOKENS
+          value: "3072"
+        - name: ENABLE_HPU_GRAPH
+          value: "true"
+        - name: LIMIT_HPU_GRAPH
+          value: "true"
+        image: ghcr.io/huggingface/tgi-gaudi:2.0.5
+        name: tgi
+        ports:
+        - containerPort: 80
+        resources:
+          # Resources can be modified as needed to support bigger models
+          limits:
+            habana.ai/gaudi: 1
+            hugepages-2Mi: 95000Mi
+            memory: 409Gi
+          requests:
+            habana.ai/gaudi: 1
+            hugepages-2Mi: 95000Mi
+            memory: 409Gi
+        securityContext:
+          capabilities:
+            add:
+            - SYS_NICE
+          privileged: true
+          runAsUser: 0
+        volumeMounts:
+        - mountPath: /root/config
+          name: config
+        - mountPath: /data
+          name: data
+      hostIPC: true
+      initContainers:
+      - args:
+        - -c
+        - config/init_quant.sh
+        command:
+        - bash
+        env:
+        - name: HF_TOKEN
+          valueFrom:
+            secretKeyRef:
+              key: HF_TOKEN
+              name: hf-token
+        - name: MODEL
+          value: meta-llama/Meta-Llama-3-8B
+        - name: USE_INC
+          value: "0"
+        image: vault.habana.ai/gaudi-docker/1.17.1/ubuntu22.04/habanalabs/pytorch-installer-2.3.1:latest
+        name: init-tgi
+        resources:
+          limits:
+            habana.ai/gaudi: 1
+            hugepages-2Mi: 95000Mi
+            memory: 409Gi
+          requests:
+            habana.ai/gaudi: 1
+            hugepages-2Mi: 95000Mi
+            memory: 409Gi
+        securityContext:
+          capabilities:
+            add:
+            - SYS_NICE
+          privileged: true
+          runAsUser: 0
+        volumeMounts:
+        - mountPath: /data
+          name: data
+        - mountPath: /root/config
+          name: config
+        workingDir: /root
+      volumes:
+      - configMap:
+          defaultMode: 320
+          name: tgi
+        name: config
+      - hostPath:
+          path: /scratch-1/tgi
+          type: Directory
+        name: data   

@@ -1,0 +1,71 @@
+apiVersion: batch/v1
+kind: Job
+metadata:
+  name: tgi-benchmark
+spec:
+  template:
+    spec:
+      containers:
+      - args:
+        - -c
+        - config/benchmark.sh
+        command:
+        - bash
+        env:
+        - name: MODEL
+          value: meta-llama/Meta-Llama-3-8B
+        - name: HUGGINGFACE_API_BASE
+          value: http://tgi/generate_stream
+        - name: HF_HOME
+          value: /root
+        - name: HF_TOKEN
+          valueFrom:
+            secretKeyRef:
+              key: HF_TOKEN
+              name: hf-token
+        - name: HUGGINGFACE_API_KEY
+          valueFrom:
+            secretKeyRef:
+              key: HF_TOKEN
+              name: hf-token
+        image: ghcr.io/huggingface/tgi-gaudi:2.0.5
+        imagePullPolicy: Always
+        name: run-generation
+        securityContext:
+          privileged: true
+          runAsUser: 0
+        volumeMounts:
+        - mountPath: /root
+          name: data
+        - mountPath: /root/config
+          name: config
+        - mountPath: /dev/shm
+          name: dshm
+        workingDir: /root
+      initContainers:
+      - args:
+        - -c
+        - config/init.sh
+        command:
+        - bash
+        image: ghcr.io/huggingface/tgi-gaudi:2.0.5
+        name: init-tgi-benchmark
+        volumeMounts:
+        - mountPath: /root
+          name: data
+        - mountPath: /root/config
+          name: config
+        workingDir: /root
+      restartPolicy: Never
+      volumes:
+      - configMap:
+          defaultMode: 320
+          name: tgi
+        name: config
+      - hostPath:
+          path: /scratch-1/tgi/
+          type: Directory
+        name: data
+      - emptyDir:
+          medium: Memory
+        name: dshm

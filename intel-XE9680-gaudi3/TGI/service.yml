@@ -1,0 +1,13 @@
+apiVersion: v1
+kind: Service
+metadata:
+  name: tgi
+spec:
+  ports:
+  - nodePort: 30944
+    port: 80
+    protocol: TCP
+    targetPort: 80
+  selector:
+    app: tgi
+  type: NodePort

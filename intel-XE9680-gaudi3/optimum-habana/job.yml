@@ -1,0 +1,62 @@
+apiVersion: batch/v1
+kind: Job
+metadata:
+  name: optimum-benchmark
+spec:
+  template:
+    spec:
+      containers:
+      - args:
+        - -c
+        - /root/config/benchmark.sh
+        command:
+        - bash
+        env:
+        - name: HF_TOKEN
+          valueFrom:
+            secretKeyRef:
+              key: HF_TOKEN
+              name: hf-token
+        #MODEL CAN BE CHANGED AS NEEDED      
+        - name: MODEL
+          value: meta-llama/Meta-Llama-3-8B
+        - name: USE_INC
+          value: "0"
+        image: vault.habana.ai/gaudi-docker/1.17.1/ubuntu22.04/habanalabs/pytorch-installer-2.3.1:latest
+        name: run-generation
+        # FOR BIGGER MODELS, TUNE RESOURCES ACCORDINGLY
+        resources:
+          limits:
+            habana.ai/gaudi: 1
+            hugepages-2Mi: 95000Mi
+            memory: 409Gi
+          requests:
+            habana.ai/gaudi: 1
+            hugepages-2Mi: 95000Mi
+            memory: 409Gi
+        securityContext:
+          capabilities:
+            add:
+            - SYS_NICE
+          privileged: true
+          runAsUser: 0
+        volumeMounts:
+        - mountPath: /data
+          name: data
+        - mountPath: /root/config
+          name: config
+        - mountPath: /dev/shm
+          name: dshm
+      restartPolicy: Never
+      volumes:
+      - configMap:
+          defaultMode: 320
+          name: optimum
+        name: config
+      - hostPath:
+          path: /scratch-1/optimum/
+          type: Directory
+        name: data
+      - emptyDir:
+          medium: Memory
+        name: dshm

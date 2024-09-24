@@ -1,0 +1,75 @@
+kind: ConfigMap
+apiVersion: v1
+metadata:
+  name: optimum
+data:
+  benchmark.sh: |
+    #!/bin/bash
+ 
+    cd /data
+    if [ -d "optimum-habana" ] ; then
+      echo "optimum-habana directory exists"
+    else
+      git clone https://github.com/huggingface/optimum-habana.git
+    fi
+ 
+    cd optimum-habana/examples/text-generation
+    python3 -m pip install git+https://github.com/huggingface/optimum-habana.git
+    python3 -m pip install -r requirements.txt
+    python3 -m pip install git+https://github.com/HabanaAI/DeepSpeed.git@1.17.0
+ 
+    QUANT_CONFIG=/root/config/maxabs_measure.json python ../gaudi_spawn.py \
+    --use_deepspeed --world_size 1 run_generation.py  \
+    --model_name_or_path $MODEL \
+    --attn_softmax_bf16 \
+    --use_hpu_graphs \
+    --trim_logits \
+    --use_kv_cache \
+    --bucket_size=128 \
+    --bucket_internal \
+    --use_flash_attention \
+    --flash_attention_recompute \
+    --bf16 \
+    --batch_size 1 \
+    --trust_remote_code
+ 
+    QUANT_CONFIG=/root/config/maxabs_quant.json python ../gaudi_spawn.py \
+    --use_deepspeed --world_size 1 run_generation.py  \
+    --model_name_or_path $MODEL \
+    --attn_softmax_bf16 \
+    --use_hpu_graphs \
+    --limit_hpu_graphs \
+    --trim_logits \
+    --use_kv_cache \
+    --bucket_size=128 \
+    --bucket_internal \
+    --use_flash_attention \
+    --flash_attention_recompute \
+    --bf16 \
+    --batch_size 2429 \
+    --max_new_tokens 128 \
+    --max_input_tokens 128 \
+    --trust_remote_code
+    
+  #CHANGE MODEL NAME FOR PATH BELOW AS NEEDED    
+  maxabs_measure.json: |
+    {
+      "method": "HOOKS",
+      "mode": "MEASURE",
+      "observer": "maxabs",
+      "allowlist": {"types": [], "names":  []},
+      "blocklist": {"types": [], "names":  []},
+      "dump_stats_path": "/data/llama-3-8b-fp8/hqt_output/measure",
+      "dump_stats_xlsx_path": "/data/llama-3-8b-fp8/hqt_output/measure/fp8stats.xlsx"
+    }
+  maxabs_quant.json: |
+    {
+      "method": "HOOKS",
+      "mode": "QUANTIZE",
+      "observer": "maxabs",
+      "scale_method": "maxabs_hw",
+      "allowlist": {"types": [], "names":  []},
+      "blocklist": {"types": [], "names":  []},
+      "dump_stats_path": "/data/llama-3-8b-fp8/hqt_output/measure",
+      "dump_stats_xlsx_path": "/data/llama-3-8b-fp8/hqt_output/measure/fp8stats.xlsx"
+    }

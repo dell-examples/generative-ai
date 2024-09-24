@@ -1,0 +1,113 @@
+---
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: fine-tuning-llama
+data:
+   finetuning.sh: |
+    #!/bin/bash
+
+    cd /root/Gaudi-tutorials/PyTorch/llama2_fine_tuning_inference
+    python -m pip install -q git+https://github.com/HabanaAI/DeepSpeed.git@1.17.0
+    python -m pip install peft
+    python -m pip install -q optimum-habana
+    cd /root/Gaudi-tutorials/PyTorch/llama2_fine_tuning_inference
+    git clone https://github.com/huggingface/optimum-habana.git
+    cd optimum-habana
+    git checkout v1.13.1
+    cd ..
+
+    cd /root/Gaudi-tutorials/PyTorch/llama2_fine_tuning_inference/optimum-habana/examples/language-modeling/
+    python -m pip install -q -r requirements.txt
+
+    huggingface-cli login --token HF_TOKEN
+
+    PT_HPU_MAX_COMPOUND_OP_SIZE=10  DEEPSPEED_HPU_ZERO3_SYNC_MARK_STEP_REQUIRED=1 \
+    python ../gaudi_spawn.py --use_deepspeed  --world_size 2 run_lora_clm.py \
+    --model_name_or_path meta-llama/Meta-Llama-3-8B \
+    --deepspeed llama2_ds_zero3_config.json \
+    --dataset_name timdettmers/openassistant-guanaco \
+    --bf16 True \
+    --output_dir ./model_lora_llama_8B \
+    --num_train_epochs 2 \
+    --max_seq_len 2048 \
+    --per_device_train_batch_size 2 \
+    --per_device_eval_batch_size 2 \
+    --gradient_accumulation_steps 4 \
+    --gradient_checkpointing \
+    --evaluation_strategy epoch \
+    --eval_delay 2 \
+    --save_strategy "steps" \
+    --save_total_limit 1 \
+    --learning_rate 1e-4 \
+    --save_steps 2000 \
+    --warmup_ratio 0.03 \
+    --lr_scheduler_type "cosine" \
+    --logging_steps 1 \
+    --dataset_concatenation \
+    --attn_softmax_bf16 True \
+    --do_train \
+    --do_eval \
+    --use_habana \
+    --use_lazy_mode \
+    --report_to none \
+    --pipelining_fwd_bwd \
+    --throughput_warmup_steps 3 \
+    --lora_rank 4 \
+    --lora_target_modules "q_proj" "v_proj" "k_proj" "o_proj" \
+    --validation_split_percentage 4
+
+   inference_peft.sh: |
+    python -m pip install -q optimum-habana
+    cd /root/Gaudi-tutorials/PyTorch/llama2_fine_tuning_inference
+    git clone https://github.com/huggingface/optimum-habana.git
+    cd optimum-habana
+    git checkout v1.13.1
+    cd ..
+    cd /root/Gaudi-tutorials/PyTorch/llama2_fine_tuning_inference/optimum-habana/examples/text-generation
+    python -m pip install -q -r requirements.txt
+    prompt="I am a dog. Please help me plan a surprise birthday party for my human, including fun activities, games and decorations. And don't forget to order a big bone-shaped cake for me to share with my fur friends!"
+    
+    echo "Below is the output with PEFT model for Llama3-8B"
+    python run_generation.py \
+    --model_name_or_path meta-llama/Meta-Llama-3-8B \
+    --batch_size 1 \
+    --do_sample \
+    --max_new_tokens 250 \
+    --n_iterations 4 \
+    --use_kv_cache \
+    --use_hpu_graphs \
+    --bf16 \
+    --prompt "${prompt}" \
+    --peft_model /root/Gaudi-tutorials/PyTorch/llama2_fine_tuning_inference/optimum-habana/examples/language-modeling/model_lora_llama_8B
+
+   inference_without_peft.sh: |
+    python -m pip install -q optimum-habana
+    cd /root/Gaudi-tutorials/PyTorch/llama2_fine_tuning_inference
+    git clone https://github.com/huggingface/optimum-habana.git
+    cd optimum-habana
+    git checkout v1.13.1
+    cd ..
+    cd /root/Gaudi-tutorials/PyTorch/llama2_fine_tuning_inference/optimum-habana/examples/text-generation
+    python -m pip install -q -r requirements.txt
+    prompt="I am a dog. Please help me plan a surprise birthday party for my human, including fun activities, games and decorations. And don't forget to order a big bone-shaped cake for me to share with my fur friends!"
+    
+    echo "Below is the output without PEFT model for Llama3-8B"
+    python run_generation.py \
+    --model_name_or_path meta-llama/Meta-Llama-3-8B \
+    --batch_size 1 \
+    --do_sample \
+    --max_new_tokens 250 \
+    --n_iterations 4 \
+    --use_kv_cache \
+    --use_hpu_graphs \
+    --bf16 \
+    --prompt "${prompt}"
+
+   benchmarks.sh: |
+    cd /root
+    config/finetuning.sh
+    sleep 5
+    config/inference_peft.sh
+    sleep 5
+    config/inference_without_peft.sh
