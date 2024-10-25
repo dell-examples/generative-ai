@@ -6,19 +6,17 @@ metadata:
 data:
   init.sh: |
     #!/bin/bash
- 
+
     if [ -d "llmperf" ] ; then
       echo "llmperf directory exists"
     else
       git clone https://github.com/ray-project/llmperf.git -b v2.0
     fi
- 
+
     url='http://vllm:8000/v1/chat/completions'
-    
-    # MODEL CAN BE CHANGED AS NEEDED
     payload=$(cat <<-END
     {
-      "model": meta-llama/Meta-Llama-3-8B,
+      "model": meta-llama/Meta-Llama-3-70B,
       "messages": [
         {"role": "system", "content": "You are a helpful assistant."},
         {"role": "user", "content": "Who won the world series in 2020?"}
@@ -33,7 +31,7 @@ data:
              -d "$payload" \
              "$url")
     status=$?
- 
+
     if [ $status -eq 0 ]; then
       echo "API request successful!"
       echo "$response" | jq '.'
@@ -43,13 +41,15 @@ data:
       sleep 10
     fi
     done
-
+    
+    
   run_vllm_backend.sh: |
     #!/bin/bash
- 
+
     #Authenticate with Hugging Face
     huggingface-cli login --token $HUGGING_FACE_HUB_TOKEN
- 
+
+
     # Start vLLM server in the background
     python3 -m vllm.entrypoints.openai.api_server \
     --model $MODEL \
@@ -58,46 +58,70 @@ data:
     --host 0.0.0.0 \
     --enforce-eager \
     --tensor-parallel-size $TENSOR_PARALLEL_SIZE \
+    --chat-template ./examples/tool_chat_template_llama3.1_json.jinja \
     --port 8000 || { echo "vLLM server failed to start"; exit 1;}
-    # ADD THIS IF NEEDED
     #--swap-space 16 \
- 
- 
+
   benchmark.sh: |
     #!/bin/bash
- 
+
     #apt update && apt install jq -y
- 
+
     cd llmperf
     #python3 -m pip install -e .
- 
+
     #export OPENAI_API_BASE=http://vllm.default.svc.cluster.local/v1
- 
-    # CHANGE DIRECTORY AS NEEDED FOR OTHER MODELS 
+
+    PROMETHEUS_URL="http://SERVER_IP:30901"
+    STEP='15s'
+
     mkdir -p /root/metrics/meta-llama
- 
-    # THIS IS A LOOP TO SWEEP CONCURRENT USERS, FOR A GIVEN INPUT/OUTPUT TOKENS. IT CAN BE MODIFIED AS NEEDED
-    for CONCURRENT in 1 32 64 128; do
-      for OUTPUT in  1024 ; do
-        for INPUT in 1024 ; do
+
+
+    for CONCURRENT in 128 ; do
+      for OUTPUT in 512 ; do
+        for INPUT in 512 ; do
           echo "CONCURRENT: $CONCURRENT"
           echo "INPUT: $INPUT"
           echo "OUTPUT: $OUTPUT"
           hl-smi --query-aip=timestamp,name,bus_id,driver_version,index,serial,uuid,module_id,temperature.aip,utilization.aip,memory.total,memory.free,memory.used,power.draw -f csv,noheader -l 2 2>&1 > /root/metrics/$MODEL-$CONCURRENT-$OUTPUT-$INPUT.log &
           pid=$!
+          START_TIME=$(date +%s)
           python3 token_benchmark_ray.py \
           --model $MODEL \
           --mean-input-tokens $INPUT \
           --stddev-input-tokens 0 \
           --mean-output-tokens $OUTPUT \
           --stddev-output-tokens 0 \
-          --max-num-completed-requests 2000 \
-          --timeout 2400 \
+          --max-num-completed-requests 1000 \
+          --timeout 48800 \
           --num-concurrent-requests $CONCURRENT \
           --results-dir result_outputs \
           --llm-api openai \
           --additional-sampling-params {}
+          END_TIME=$(date +%s)
+          DURATION=$(($END_TIME - $START_TIME))s
+          QUERY_LIST=(
+          "sum(avg_over_time(habanalabs_utilization[$DURATION]))"
+          "sum(max_over_time(habanalabs_utilization[$DURATION]))"
+          "max(avg_over_time(habanalabs_memory_used_bytes[$DURATION]))"
+          "max(max_over_time(habanalabs_memory_used_bytes[$DURATION]))"
+          "sum(avg_over_time(habanalabs_power_mW[$DURATION]))"
+          "sum(max_over_time(habanalabs_power_mW[$DURATION]))"
+          "100-(avg(irate(node_cpu_seconds_total{mode=\"idle\"}[$DURATION]))*100)"
+          "100-(avg(node_memory_MemAvailable_bytes)/avg(node_memory_MemTotal_bytes)*100)"
+          )
           kill $pid
+          #for item in "${QUERY_LIST[@]}"; do
+          #  echo "Processing $item"
+          #  curl -s -G \
+          #    --data-urlencode "query=$item" \
+          #    --data-urlencode "start=$START_TIME" \
+          #    --data-urlencode "end=$END_TIME" \
+          #    --data-urlencode "step=$STEP" \
+          #    "$PROMETHEUS_URL/api/v1/query" \
+          #    | jq .data.result[0].value[1]
+          #done
         done
       done
     done
