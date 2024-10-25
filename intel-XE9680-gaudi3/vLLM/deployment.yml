@@ -17,26 +17,28 @@ spec:
       hostNetwork: true
       initContainers:
       - name: init-vllm
-        image: vault.habana.ai/gaudi-docker/1.17.1/ubuntu22.04/habanalabs/pytorch-installer-2.3.1
+        image: vault.habana.ai/gaudi-docker/1.18.0/ubuntu22.04/habanalabs/pytorch-installer-2.4.0:latest
         command: ["hl-smi"]
         env:
-        # MODEL CAN BE CHANGED AS NEEDED
+        - name: HABANA_VISIBLE_DEVICES
+          value: "all"
+          #- name: HABANA_VISIBLE_MODULES
+          #value: 0,1,2,3
         - name: MODEL
-          value: meta-llama/Meta-Llama-3-8B
+          value: meta-llama/Meta-Llama-3-70B
         resources:
           limits:
-            habana.ai/gaudi: 1
+            habana.ai/gaudi: 4
             memory: 809Gi
             hugepages-2Mi: 9500Mi
           requests:
-            habana.ai/gaudi: 1
+            habana.ai/gaudi: 4
             memory: 809Gi
             hugepages-2Mi: 9500Mi
- 
+
       containers:
       - name: vllm-backend
-        # Replace dockerregistryIP with docker private registry IP address
-        image: dockerregistryIP:5500/vllm_backend:latest
+        image: dockerregistryip:5500/vllm_backend:1.18.0_v1
         workingDir: /vllm-fork
         command:
           - bash
@@ -45,12 +47,16 @@ spec:
           - '/root/config/run_vllm_backend.sh'
         env:
         - name: MODEL
-          value: meta-llama/Meta-Llama-3-8B
+          value: meta-llama/Meta-Llama-3-70B
         - name: HUGGING_FACE_HUB_TOKEN
           valueFrom:
             secretKeyRef:
               name: hf-token
               key: HF_TOKEN
+        - name: HABANA_VISIBLE_DEVICES
+          value: "all"
+          #- name: HABANA_VISIBLE_MODULES
+          #value: "all"
         - name: OMPI_MCA_btl_vader_single_copy_mechanism
           value: none
         - name: VLLM_PROMPT_BS_BUCKET_MIN
@@ -78,26 +84,38 @@ spec:
         - name: VLLM_DECODE_SEQ_BUCKET_MAX
           value: "2048"
         - name: PT_HPU_LAZY_MODE
-          value: "0"
-        # CHANGE THE TENSOR_PARALLEL_SIZE VARIABLE BASED ON # CARDS  
-        - name: TENSOR_PARALLEL_SIZE
           value: "1"
+        - name: TENSOR_PARALLEL_SIZE
+          value: "4"
         - name: PT_HPU_ENABLE_LAZY_COLLECTIVES
           value: "true"
+        - name: VLLM_OVERSCHEDULE
+          value: "false"
+        - name: VLLM_GRAPH_RESERVED_MEM
+          value: "0.2"
+            #- name: VLLM_DECODE_BLOCK_BUCKET_STEP
+            #  value: "64"
+            #- name: VLLM_DECODE_BLOCK_BUCKET_MIN
+            #  value: "64"
+            #- name: VLLM_OVERSCHEDULE
+            #  value: "false"
+            #- name: VLLM_GRAPH_RESERVED_MEM
+            #  value: "0.2"
+            #- name: VLLM_GRAPH_PROMPT_RATIO
+            #  value: "0.8"
             
         ports:
         - containerPort: 8000
         resources:
-          # Change resources as needed to support bigger models
           limits:
-            habana.ai/gaudi: 1
+            habana.ai/gaudi: 4
             memory: 809Gi
             hugepages-2Mi: 95000Mi
           requests:
-            habana.ai/gaudi: 1
+            habana.ai/gaudi: 4
             memory: 809Gi
             hugepages-2Mi: 95000Mi
- 
+
         securityContext:
           privileged: true
           runAsUser: 0
@@ -116,7 +134,7 @@ spec:
         - name: data
           #emptyDir: {}
           hostPath:
-            path: /scratch-1/vllm/
+            path: /fastdata/02/vllm/
             type: Directory
         - name: dshm
           emptyDir:

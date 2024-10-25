@@ -7,6 +7,8 @@ data:
    finetuning.sh: |
     #!/bin/bash
 
+    cd /root
+    git clone https://github.com/HabanaAI/Gaudi-tutorials.git
     cd /root/Gaudi-tutorials/PyTorch/llama2_fine_tuning_inference
     python -m pip install -q git+https://github.com/HabanaAI/DeepSpeed.git@1.17.0
     python -m pip install peft

@@ -7,46 +7,40 @@ spec:
   template:
     spec:
       initContainers:
-      # Replace dockerregistryIP with docker private registry IP address
       - name: init-vllm-benchmark
-        image: dockerregistryIP:5500/vllm_benchmark:latest
+        image: dockerregistryip:5500/vllm_benchmark:latest
         workingDir: /root
         command:
         - bash
         args:
         - -c
-        - 'sleep 200'
+        - 'sleep 120'
         env:
         - name: VLLM_URL
           value: "http://vllm:8000" # Port exposed by the Service
-        # Change model as needed  
         - name: MODEL
-          value: meta-llama/Meta-Llama-3-8B
+          value: meta-llama/Meta-Llama-3-70B
         volumeMounts:
         - name: data
           mountPath: /root
         - name: config
           mountPath: /root/config
- 
+
       containers:
-      # Replace dockerregistryIP with docker private registry IP address
       - name: run-generation
-        image: dockerregistryIP:5500/vllm_benchmark:latest
+        image: dockerregistryip:5500/vllm_benchmark:1.18.0_v1
         workingDir: /root
         command:
           - bash
         args:
           - -c
           - 'config/benchmark.sh'
-       
+           #- 'sleep 2000'
         env:
         - name: MODEL
-          value: meta-llama/Meta-Llama-3-8B
+          value: meta-llama/Meta-Llama-3-70B 
         - name: HUGGING_FACE_HUB_TOKEN
-          valueFrom:
-            secretKeyRef:
-              key: HF_TOKEN
-              name: hf-token
+          value: hf_TOKEN
         - name: HUGGINGFACE_API_KEY
           value: EMPTY
         - name: OPENAI_API_BASE
@@ -73,14 +67,14 @@ spec:
             name: vllm
             defaultMode: 0500
         - name: data
+          #emptyDir: {}
           hostPath:
-            path: /scratch-1/vllm/
+            path: /fastdata/02/vllm/
             type: Directory
         - name: dshm
           emptyDir:
             medium: Memory
-        # Provide the path to the local copy of models if needed
         - name: huggingface-cache
           hostPath:
-            path: /path/to/.cache/huggingface
+            path: /home/abi/.cache/huggingface
             type: Directory
