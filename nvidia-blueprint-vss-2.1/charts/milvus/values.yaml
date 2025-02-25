@@ -1,0 +1,100 @@
+# Copyright (c) 2023, NVIDIA CORPORATION.  All rights reserved.
+#
+# NVIDIA CORPORATION and its licensors retain all intellectual property
+# and proprietary rights in and to this software, related documentation
+# and any modifications thereto.  Any use, reproduction, disclosure or
+# distribution of this software and related documentation without an express
+# license agreement from NVIDIA CORPORATION is strictly prohibited.
+
+Component:
+  app-version: 2.1.0
+  description: default description
+  helmUrlLocationPath: https://helm.ngc.nvidia.com/myorg/myteam/charts
+  name: milvus
+  version: 2.1.0
+affinity: {}
+applicationSpecs:
+  milvus-deployment:
+    apptype: stateless
+    containers:
+      milvus-container:
+        command:
+        - milvus
+        - run
+        - standalone
+        env:
+        - name: ETCD_ENDPOINTS
+          value: $egress.etcd.address:$egress.etcd.port
+        - name: MINIO_ADDRESS
+          value: $egress.minio.address:$egress.minio.port
+        - name: KNOWHERE_GPU_MEM_POOL_SIZE
+          value: 2048;4096
+        image:
+          repository: milvusdb/milvus
+          tag: v2.4.4
+        ports:
+        - containerPort: 19530
+          name: http1
+        - containerPort: 9091
+          name: http2
+        resources:
+          limits:
+            nvidia.com/gpu: 0
+    services:
+      milvus-service:
+        ports:
+        - name: http-api1
+          port: 19530
+          targetPort: 19530
+        - name: http-api2
+          port: 9091
+          targetPort: 9091
+defaultVolumeMounts:
+- mountPath: /opt/workload-config
+  name: workload-cm-volume
+- mountPath: /opt/configs
+  name: configs-volume
+- mountPath: /opt/scripts
+  name: scripts-cm-volume
+defaultVolumes:
+- configMap:
+    name: milvus-workload-cm
+  name: workload-cm-volume
+- configMap:
+    name: milvus-configs-cm
+  name: configs-volume
+- configMap:
+    name: milvus-scripts-cm
+  name: scripts-cm-volume
+egress:
+  etcd:
+    address: <PLACEHOLDER>
+    port: 0
+  minio:
+    address: <PLACEHOLDER>
+    port: 0
+externalFiles: []
+image:
+  pullPolicy: IfNotPresent
+imagePullSecrets: []
+ingress:
+  enabled: false
+metrics: {}
+nodeSelector: {}
+podAnnotations: {}
+podSecurityContext: {}
+replicaCount: 1
+resources: {}
+securityContext: {}
+storageClaims: {}
+tolerations: []
+workloadSpecs:
+  dummy: {}
+
+
+
+configs:
+  config.yaml:
+    SampleConfig:
+      sampleValue: 0
+

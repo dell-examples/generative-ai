@@ -1,0 +1,100 @@
+# Copyright (c) 2023, NVIDIA CORPORATION.  All rights reserved.
+#
+# NVIDIA CORPORATION and its licensors retain all intellectual property
+# and proprietary rights in and to this software, related documentation
+# and any modifications thereto.  Any use, reproduction, disclosure or
+# distribution of this software and related documentation without an express
+# license agreement from NVIDIA CORPORATION is strictly prohibited.
+
+Component:
+  app-version: 2.1.0
+  description: default description
+  helmUrlLocationPath: https://helm.ngc.nvidia.com/myorg/myteam/charts
+  name: etcd
+  version: 2.1.0
+affinity: {}
+applicationSpecs:
+  etcd-deployment:
+    apptype: stateless
+    containers:
+      etcd-container:
+        command:
+        - etcd
+        - -advertise-client-urls=http://127.0.0.1:2379
+        - -listen-client-urls
+        - http://0.0.0.0:2379
+        - --data-dir
+        - /etcd
+        env:
+        - name: ETCD_AUTO_COMPACTION_MODE
+          value: revision
+        - name: ETCD_AUTO_COMPACTION_RETENTION
+          value: '1000'
+        - name: ETCD_QUOTA_BACKEND_BYTES
+          value: '4294967296'
+        - name: ETCD_SNAPSHOT_COUNT
+          value: '50000'
+        image:
+          repository: quay.io/coreos/etcd
+          tag: v3.5.5
+        livenessProbe:
+          exec:
+            command:
+            - etcdctl
+            - endpoint
+            - health
+          failureThreshold: 3
+          initialDelaySeconds: 30
+          periodSeconds: 30
+          timeoutSeconds: 20
+        ports:
+        - containerPort: 2379
+          name: http
+    services:
+      etcd-service:
+        ports:
+        - name: http-api
+          port: 2379
+defaultVolumeMounts:
+- mountPath: /opt/workload-config
+  name: workload-cm-volume
+- mountPath: /opt/configs
+  name: configs-volume
+- mountPath: /opt/scripts
+  name: scripts-cm-volume
+defaultVolumes:
+- configMap:
+    name: etcd-workload-cm
+  name: workload-cm-volume
+- configMap:
+    name: etcd-configs-cm
+  name: configs-volume
+- configMap:
+    name: etcd-scripts-cm
+  name: scripts-cm-volume
+egress: {}
+externalFiles: []
+image:
+  pullPolicy: IfNotPresent
+imagePullSecrets: []
+ingress:
+  enabled: false
+metrics: {}
+nodeSelector: {}
+podAnnotations: {}
+podSecurityContext: {}
+replicaCount: 1
+resources: {}
+securityContext: {}
+storageClaims: {}
+tolerations: []
+workloadSpecs:
+  dummy: {}
+
+
+
+configs:
+  config.yaml:
+    SampleConfig:
+      sampleValue: 0
+

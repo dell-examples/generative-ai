@@ -1,0 +1,6 @@
+apiVersion: v2
+appVersion: 2.1.0
+description: default description
+name: neo4j
+type: application
+version: 2.1.0

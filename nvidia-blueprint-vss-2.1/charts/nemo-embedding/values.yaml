@@ -1,0 +1,96 @@
+# Copyright (c) 2023, NVIDIA CORPORATION.  All rights reserved.
+#
+# NVIDIA CORPORATION and its licensors retain all intellectual property
+# and proprietary rights in and to this software, related documentation
+# and any modifications thereto.  Any use, reproduction, disclosure or
+# distribution of this software and related documentation without an express
+# license agreement from NVIDIA CORPORATION is strictly prohibited.
+
+Component:
+  app-version: 2.1.0
+  description: nvidia/nv-embedqa-e5-v5 NIM microservice
+  helmUrlLocationPath: https://helm.ngc.nvidia.com/myorg/myteam/charts
+  name: nemo-embedding
+  version: 2.1.0
+affinity: {}
+applicationSpecs:
+  embedding-deployment:
+    apptype: stateless
+    containers:
+      embedding-container:
+        env:
+        - name: NGC_API_KEY
+          valueFrom:
+            secretKeyRef:
+              key: NGC_API_KEY
+              name: ngc-api-key-secret
+        image:
+          repository: nvcr.io/nim/nvidia/llama-3.2-nv-embedqa-1b-v2
+          tag: 1.3.0
+        livenessProbe:
+          failureThreshold: 3
+          httpGet:
+            path: /v1/health/ready
+            port: http
+          initialDelaySeconds: 10
+          periodSeconds: 30
+          timeoutSeconds: 20
+        ports:
+        - containerPort: 8000
+          name: http
+        resources:
+          limits:
+            nvidia.com/gpu: 1
+    securityContext:
+      fsGroup: 1000
+      runAsGroup: 1000
+      runAsUser: 1000
+    services:
+      embedding-service:
+        ports:
+        - name: http-api
+          port: 8000
+          targetPort: 8000
+defaultVolumeMounts:
+- mountPath: /opt/workload-config
+  name: workload-cm-volume
+- mountPath: /opt/configs
+  name: configs-volume
+- mountPath: /opt/scripts
+  name: scripts-cm-volume
+defaultVolumes:
+- configMap:
+    name: nemo-embedding-workload-cm
+  name: workload-cm-volume
+- configMap:
+    name: nemo-embedding-configs-cm
+  name: configs-volume
+- configMap:
+    name: nemo-embedding-scripts-cm
+  name: scripts-cm-volume
+egress: {}
+externalFiles: []
+image:
+  pullPolicy: IfNotPresent
+imagePullSecrets: []
+ingress:
+  enabled: false
+metrics: {}
+nodeSelector: {}
+podAnnotations: {}
+podSecurityContext: {}
+replicaCount: 1
+resources: {}
+securityContext: {}
+storageClaims: {}
+tolerations: []
+workloadSpecs:
+  dummy: {}
+
+
+
+configs:
+  config.yaml:
+    SampleConfig:
+      sampleValue: 0
+

@@ -1,0 +1,41 @@
+{{/*
+ Copyright (c) 2023, NVIDIA CORPORATION.  All rights reserved.
+
+ NVIDIA CORPORATION and its licensors retain all intellectual property
+ and proprietary rights in and to this software, related documentation
+ and any modifications thereto.  Any use, reproduction, disclosure or
+ distribution of this software and related documentation without an express
+ license agreement from NVIDIA CORPORATION is strictly prohibited.
+*/}}
+
+{{- $chart := .Chart -}}
+{{- $topValues := .Values }}
+{{- range $claimName, $claimData := $topValues.storageClaims }}
+{{- if $claimData.spec }}
+---
+kind: PersistentVolumeClaim
+apiVersion: v1
+metadata:
+  name: {{ $.Chart.Name }}-{{ $claimName }}
+  {{- if $topValues.namespace }}
+  namespace: {{ $topValues.namespace }}
+  {{- end }}
+  labels:
+    name: {{ $.Chart.Name }}-{{ $claimName }}
+{{ include "hb.labels.standard" . | indent 4 }}
+{{- include "std-helm.labels" $ | nindent 4 }}
+  {{- with $claimData.annotations }}
+  annotations:
+     {{- toYaml . | nindent 4 }}
+  {{- end }}
+spec:
+  {{- with $claimData.spec }}
+  {{- $spec := . | deepCopy }}
+  {{- if $topValues.storageClassName }}
+    {{- $_ := unset $spec "storageClassName" }}
+    {{- $_ := set $spec "storageClassName" $topValues.storageClassName }}
+  {{- end }}
+  {{- toYaml $spec | nindent 2 }}
+  {{- end }}
+{{- end }}
+{{- end }}

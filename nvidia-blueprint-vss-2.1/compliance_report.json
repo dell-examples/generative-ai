@@ -1,0 +1,58 @@
+{
+    "name": "nvidia-blueprint-vss",
+    "version": "2.1.0",
+    "time-utc": "2024-12-16 23:48:06",
+    "appbuilder-version": "2.5.0",
+    "compliance-development-mandatory-overall": 74.07,
+    "compliance-development-optional-overall": 27.5,
+    "compliance-ms": [
+        {
+            "name": "ucf.svc.vss",
+            "version": "2.1.0",
+            "compliance-development-mandatory": 92.59,
+            "compliance-development-optional": 40.0
+        },
+        {
+            "name": "ucf.svc.etcd",
+            "version": "2.1.0",
+            "compliance-development-mandatory": 51.85,
+            "compliance-development-optional": 20.0
+        },
+        {
+            "name": "ucf.svc.minio",
+            "version": "2.1.0",
+            "compliance-development-mandatory": 51.85,
+            "compliance-development-optional": 20.0
+        },
+        {
+            "name": "ucf.svc.milvus",
+            "version": "2.1.0",
+            "compliance-development-mandatory": 51.85,
+            "compliance-development-optional": 20.0
+        },
+        {
+            "name": "ucf.svc.neo4j",
+            "version": "2.1.0",
+            "compliance-development-mandatory": 96.29,
+            "compliance-development-optional": 20.0
+        },
+        {
+            "name": "ucf.svc.llm-nim",
+            "version": "2.1.0",
+            "compliance-development-mandatory": 85.18,
+            "compliance-development-optional": 20.0
+        },
+        {
+            "name": "ucf.svc.nemo-embedding",
+            "version": "2.1.0",
+            "compliance-development-mandatory": 81.48,
+            "compliance-development-optional": 40.0
+        },
+        {
+            "name": "ucf.svc.nemo-rerank",
+            "version": "2.1.0",
+            "compliance-development-mandatory": 81.48,
+            "compliance-development-optional": 40.0
+        }
+    ]
+}

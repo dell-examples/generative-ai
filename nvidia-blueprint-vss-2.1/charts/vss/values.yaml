@@ -1,0 +1,426 @@
+# Copyright (c) 2023, NVIDIA CORPORATION.  All rights reserved.
+#
+# NVIDIA CORPORATION and its licensors retain all intellectual property
+# and proprietary rights in and to this software, related documentation
+# and any modifications thereto.  Any use, reproduction, disclosure or
+# distribution of this software and related documentation without an express
+# license agreement from NVIDIA CORPORATION is strictly prohibited.
+
+Component:
+  app-version: 2.1.0
+  description: VSS microservice
+  helmUrlLocationPath: https://helm.ngc.nvidia.com/myorg/myteam/charts
+  name: vss
+  version: 2.1.0
+affinity: {}
+applicationSpecs:
+  vss-deployment:
+    apptype: stateless
+    containers:
+      vss:
+        command:
+        - bash
+        - /opt/scripts/start.sh
+        env:
+        - name: FRONTEND_PORT
+          value: '9000'
+        - name: BACKEND_PORT
+          value: '8000'
+        - name: GRAPH_DB_URI
+          value: bolt://$egress.neo4j-bolt.address:$egress.neo4j-bolt.port
+        - name: GRAPH_DB_USERNAME
+          value: neo4j
+        - name: GRAPH_DB_PASSWORD
+          value: password
+        - name: MILVUS_DB_HOST
+          value: $egress.milvus.address
+        - name: MILVUS_DB_PORT
+          value: $egress.milvus.port
+        - name: VLM_MODEL_TO_USE
+          value: $params.vlmModelType
+        - name: MODEL_PATH
+          value: $params.vlmModelPath
+        - name: DISABLE_GUARDRAILS
+          value: $params.disableGuardrails
+        - name: OPENAI_API_KEY_NAME
+          value: $params.openaiApiKeyName
+        - name: NVIDIA_API_KEY_NAME
+          value: $params.nvidiaApiKeyName
+        - name: NGC_API_KEY_NAME
+          value: $params.ngcApiKeyName
+        - name: TRT_LLM_MODE
+          value: $params.trtllmMode
+        - name: VLM_BATCH_SIZE
+          value: $params.vlmBatchSize
+        - name: VIA_VLM_OPENAI_MODEL_DEPLOYMENT_NAME
+          value: $params.vlmOpenAiModelName
+        - name: VIA_VLM_ENDPOINT
+          value: $params.vlmEndpoint
+        - name: VIA_VLM_API_KEY
+          value: $params.vlmApiKey
+        - name: OPENAI_API_VERSION
+          value: $params.openAiVersion
+        - name: AZURE_OPENAI_API_VERSION
+          value: $params.azureApiVersion
+        image:
+          pullPolicy: Always
+          repository: nvcr.io/nvidia/blueprint/vss-engine
+          tag: 2.1.0
+        livenessProbe:
+          httpGet:
+            path: /health/live
+            port: http-api
+        ports:
+        - containerPort: 8000
+          name: http-api
+        readinessProbe:
+          httpGet:
+            path: /health/ready
+            port: http-api
+          initialDelaySeconds: 5
+          periodSeconds: 5
+        startupProbe:
+          failureThreshold: 180
+          httpGet:
+            path: /health/ready
+            port: http-api
+          periodSeconds: 10
+        volumeMounts:
+        - mountPath: /tmp/via-ngc-model-cache
+          name: ngc-model-cache-volume
+    initContainers:
+    - command:
+      - sh
+      - -c
+      - until nc -z -w 2 $egress.milvus.address $egress.milvus.port; do echo waiting
+        for milvus; sleep 2; done
+      image: busybox:1.28
+      imagePullPolicy: IfNotPresent
+      name: check-milvus-up
+    - command:
+      - sh
+      - -c
+      - until nc -z -w 2 $egress.neo4j-bolt.address $egress.neo4j-bolt.port; do echo
+        waiting for neo4j; sleep 2; done
+      image: busybox:1.28
+      imagePullPolicy: IfNotPresent
+      name: check-neo4j-up
+    - args:
+      - "while ! curl -s -f -o /dev/null http://$egress.llm-openai-api.address:$egress.llm-openai-api.port/v1/health/live;\
+        \ do\n  echo \"Waiting for LLM...\"\n  sleep 2\ndone\n"
+      command:
+      - sh
+      - -c
+      image: curlimages/curl:latest
+      name: check-llm-up
+    restartPolicy: Always
+    securityContext:
+      fsGroup: 1000
+      runAsGroup: 1000
+      runAsUser: 1000
+    services:
+      vss-service:
+        fullNameOverride: true
+        ports:
+        - name: http-api
+          port: 8000
+        - name: webui
+          port: 9000
+        type: NodePort
+    volumes:
+    - name: ngc-model-cache-volume
+      persistentVolumeClaim:
+        claimName: vss-ngc-model-cache-pvc
+    restartPodOnConfigChanges:
+    - configmap: vss-configs-cm
+      templateFile: configmaps.yaml
+    - configmap: vss-scripts-cm
+      templateFile: scripts-configmaps.yaml
+    - configmap: vss-workload-cm
+      templateFile: wl-configmaps.yaml
+    - configmap: vss-external-files-cm
+      templateFile: external_files.yaml
+azureApiVersion: ''
+cm-dependencies:
+  addAll: true
+defaultVolumeMounts:
+- mountPath: /opt/workload-config
+  name: workload-cm-volume
+- mountPath: /opt/configs
+  name: configs-volume
+- mountPath: /opt/scripts
+  name: scripts-cm-volume
+defaultVolumes:
+- configMap:
+    name: vss-workload-cm
+  name: workload-cm-volume
+- configMap:
+    name: vss-configs-cm
+  name: configs-volume
+- configMap:
+    name: vss-scripts-cm
+  name: scripts-cm-volume
+disableGuardrails: 'false'
+egress:
+  llm-openai-api:
+    address: <PLACEHOLDER>
+    port: 0
+  milvus:
+    address: <PLACEHOLDER>
+    port: 0
+  nemo-embed:
+    address: <PLACEHOLDER>
+    port: 0
+  nemo-rerank:
+    address: <PLACEHOLDER>
+    port: 0
+  neo4j-bolt:
+    address: <PLACEHOLDER>
+    port: 0
+externalFiles: []
+image:
+  pullPolicy: IfNotPresent
+imagePullSecrets: []
+ingress:
+  enabled: false
+llmModel: meta/llama3-8b-instruct
+llmModelChat: gpt-4o
+metrics: {}
+ngcApiKeyName: VSS_NGC_API_KEY
+nodeSelector: {}
+nvidiaApiKeyName: VSS_NVIDIA_API_KEY
+openAiVersion: ''
+openaiApiKeyName: VSS_OPENAI_API_KEY
+podAnnotations: {}
+podSecurityContext: {}
+replicaCount: 1
+resources: {}
+securityContext: {}
+storageClaims:
+  ngc-model-cache-pvc:
+    annotations:
+      helm.sh/resource-policy: keep
+    spec:
+      accessModes:
+      - ReadWriteOnce
+      resources:
+        requests:
+          storage: 100Gi
+tolerations: []
+trtllmMode: int4_awq
+vlmApiKey: ''
+vlmBatchSize: ''
+vlmEndpoint: ''
+vlmModelPath: ''
+vlmModelType: openai-compat
+vlmOpenAiModelName: ''
+workloadSpecs:
+  dummy: {}
+
+
+
+configs:
+  ca_rag_config.yaml:
+    chat:
+      embedding:
+        base_url: http://$egress.nemo-embed.address:$egress.nemo-embed.port/v1
+        model: nvidia/llama-3.2-nv-embedqa-1b-v2
+      llm:
+        base_url: http://$egress.llm-openai-api.address:$egress.llm-openai-api.port/v1
+        model: $params.llmModelChat
+        temperature: 0
+      rag: graph-rag
+      reranker:
+        base_url: http://$egress.nemo-rerank.address:$egress.nemo-rerank.port/v1
+        model: nvidia/llama-3.2-nv-rerankqa-1b-v2
+    summarization:
+      embedding:
+        base_url: http://$egress.nemo-embed.address:$egress.nemo-embed.port/v1
+        model: nvidia/llama-3.2-nv-embedqa-1b-v2
+      enable: true
+      llm:
+        base_url: http://$egress.llm-openai-api.address:$egress.llm-openai-api.port/v1
+        max_tokens: 2048
+        model: $params.llmModel
+        temperature: 0.2
+        top_p: 0.7
+      method: batch
+      params:
+        batch_max_concurrency: 20
+        batch_size: 5
+      prompts:
+        caption: Write a concise and clear dense caption for the provided warehouse
+          video, focusing on irregular or hazardous events such as boxes falling,
+          workers not wearing PPE, workers falling, workers taking photographs, workers
+          chitchatting, forklift stuck, etc. Start and end each sentence with a time
+          stamp.
+        caption_summarization: 'You should summarize the following events of a warehouse
+          in the format start_time:end_time:caption. For start_time and end_time use
+          . to seperate seconds, minutes, hours. If during a time segment only regular
+          activities happen, then ignore them, else note any irregular activities
+          in detail. The output should be bullet points in the format start_time:end_time:
+          detailed_event_description. Don''t return anything else except the bullet
+          points.'
+        summary_aggregation: 'You are a warehouse monitoring system. Given the caption
+          in the form start_time:end_time: caption, Aggregate the following captions
+          in the format start_time:end_time:event_description. If the event_description
+          is the same as another event_description, aggregate the captions in the
+          format start_time1:end_time1,...,start_timek:end_timek:event_description.
+          If any two adjacent end_time1 and start_time2 is within a few tenths of
+          a second, merge the captions in the format start_time1:end_time2. The output
+          should only contain bullet points.  Cluster the output into Unsafe Behavior,
+          Operational Inefficiencies, Potential Equipment Damage and Unauthorized
+          Personnel'
+  config.yaml:
+    SampleConfig:
+      sampleValue: 0
+  guardrails_config.yaml:
+    instructions:
+    - content: 'Below is a conversation between a bot and a user about the image or
+        video.
+
+        The bot is factual and concise. If the bot does not know the answer to a
+
+        question, it truthfully says it does not know.
+
+        '
+      type: general
+    models:
+    - engine: nim
+      model: $params.llmModel
+      parameters:
+        base_url: http://$egress.llm-openai-api.address:$egress.llm-openai-api.port/v1
+      type: main
+    - engine: nim_patch
+      model: nvidia/llama-3.2-nv-embedqa-1b-v2
+      parameters:
+        base_url: http://$egress.nemo-embed.address:$egress.nemo-embed.port/v1
+      type: embeddings
+    prompts:
+    - messages:
+      - content: '{{ general_instructions }}{% if relevant_chunks != None and relevant_chunks
+          != '''' %}
+
+          This is some relevant context:
+
+          ```markdown
+
+          {{ relevant_chunks }}
+
+          ```{% endif %}
+
+          '
+        type: system
+      - '{{ history | to_chat_messages }}'
+      task: general
+    - messages:
+      - content: '{{ general_instructions }}
+
+
+          Your task is to generate the user intent in a conversation given the last
+          user message similar to the examples below.
+
+          Do not provide any explanations, just output the user intent.
+
+
+          # Examples:
+
+          {{ examples | verbose_v1 }}
+
+          '
+        type: system
+      - '{{ sample_conversation | first_turns(2) | to_messages }}'
+      - '{{ history | colang | to_messages }}'
+      - content: 'Bot thinking: potential user intents are: {{ potential_user_intents
+          }}
+
+          '
+        type: assistant
+      output_parser: verbose_v1
+      task: generate_user_intent
+    - messages:
+      - content: '{{ general_instructions }}
+
+
+          Your task is to generate the next steps in a conversation given the last
+          user message similar to the examples below.
+
+          Do not provide any explanations, just output the user intent and the next
+          steps.
+
+
+          # Examples:
+
+          {{ examples | remove_text_messages | verbose_v1 }}
+
+          '
+        type: system
+      - '{{ sample_conversation | first_turns(2) | to_intent_messages }}'
+      - '{{ history | colang | to_intent_messages }}'
+      output_parser: verbose_v1
+      task: generate_next_steps
+    - messages:
+      - content: '{{ general_instructions }}{% if relevant_chunks != None and relevant_chunks
+          != '''' %}
+
+          This is some relevant context:
+
+          ```markdown
+
+          {{ relevant_chunks }}
+
+          ```{% endif %}
+
+          Your task is to generate the bot message in a conversation given the last
+          user message, user intent and bot intent.
+
+          Similar to the examples below.
+
+          Do not provide any explanations, just output the bot message.
+
+
+          # Examples:
+
+          {{ examples | verbose_v1 }}
+
+          '
+        type: system
+      - '{{ sample_conversation | first_turns(2) | to_intent_messages_2 }}'
+      - '{{ history | colang | to_intent_messages_2 }}'
+      output_parser: verbose_v1
+      task: generate_bot_message
+    - messages:
+      - content: '{{ general_instructions }}
+
+
+          Your task is to generate value for the ${{ var_name }} variable..
+
+          Do not provide any explanations, just output value.
+
+
+          # Examples:
+
+          {{ examples | verbose_v1 }}
+
+          '
+        type: system
+      - '{{ sample_conversation | first_turns(2) | to_messages }}'
+      - '{{ history | colang | to_messages }}'
+      - content: 'Bot thinking: follow the following instructions: {{ instructions
+          }}
+
+          ${{ var_name }} =
+
+          '
+        type: assistant
+      output_parser: verbose_v1
+      task: generate_value
+    rails:
+      input:
+        flows:
+        - self check input
+    sample_conversation: "user \"Hello there!\"\n  express greeting\nbot express greeting\n\
+      \  \"Hello! How can I assist you today?\"\nuser \"What can you do for me?\"\n\
+      \  ask about capabilities\nbot respond about capabilities\n  \"I am an AI assistant\
+      \ here to answer questions about the image or video.\"\n"
+

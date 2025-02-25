@@ -1,0 +1,60 @@
+{{/*
+ Copyright (c) 2023, NVIDIA CORPORATION.  All rights reserved.
+
+ NVIDIA CORPORATION and its licensors retain all intellectual property
+ and proprietary rights in and to this software, related documentation
+ and any modifications thereto.  Any use, reproduction, disclosure or
+ distribution of this software and related documentation without an express
+ license agreement from NVIDIA CORPORATION is strictly prohibited.
+*/}}
+
+{{- $topValues := .Values }}
+{{- if $topValues.applicationSpecs }}
+{{- $applicationSpecs := $topValues.applicationSpecs }}
+{{- range $appname, $appData := $applicationSpecs }}
+{{- if or (eq $appData.apptype "stateful") (eq $appData.apptype "stateless") }}
+{{- if hasKey $appData "hpa" }}
+{{- $hpa := $appData.hpa }}
+---
+apiVersion: autoscaling/v2
+kind: HorizontalPodAutoscaler
+metadata:
+  name: {{ $.Chart.Name }}-hpa
+  {{- if $topValues.namespace }}
+  namespace: {{ $topValues.namespace }}
+  {{- end }}
+  labels:
+    app: {{ $.Chart.Name }}-{{ $appname }}
+{{ include "microservice.hb.labels.standard" . | indent 4 }}
+{{- include "std-helm.labels" $ | nindent 4 }}
+spec:
+  scaleTargetRef:
+    apiVersion: apps/v2
+    kind: {{ include "deployment.resource.type" $appData }} 
+    name: {{ $.Chart.Name }}-{{ $appname }}
+  minReplicas: {{ $hpa.minReplicas | default 1 }} 
+  maxReplicas: {{ $hpa.maxReplicas }}
+  metrics: 
+{{- if $hpa.cpu }}
+  - type: Resource
+    resource:
+      name: cpu
+      target:
+        type: Utilization
+        averageUtilization: {{ $hpa.cpu.averageUtilization }}
+{{- end }}
+{{- if $hpa.memory }}
+  - type: Resource
+    resource:
+      name: memory
+      target:
+        type: Utilization
+        averageUtilization: {{ $hpa.memory.averageUtilization }}
+{{- end }}
+{{- if $hpa.additionalMetrics }}
+{{- $hpa.additionalMetrics| toYaml | nindent 2}}
+{{- end }}
+{{- end }}
+{{- end }}
+{{- end }}
+{{- end }}

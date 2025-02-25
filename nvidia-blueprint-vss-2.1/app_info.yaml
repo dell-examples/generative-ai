@@ -1,0 +1,29 @@
+metrics: []
+
+
+secrets:
+- name: ngc-api-key
+  description: NGC API Key
+  type: Kubernetes Secret
+  secretName: ngc-api-key-secret
+  secretKey: NGC_API_KEY
+  usedBy:
+  - ucf.svc.vss v2.1.0
+
+- name: graph-db-username
+  description: neo4j database username
+  type: Kubernetes Secret
+  secretName: graph-db-creds-secret
+  secretKey: username
+  usedBy:
+  - ucf.svc.vss v2.1.0
+  - ucf.svc.neo4j v2.1.0
+
+- name: graph-db-password
+  description: neo4j database password
+  type: Kubernetes Secret
+  secretName: graph-db-creds-secret
+  secretKey: password
+  usedBy:
+  - ucf.svc.vss v2.1.0
+  - ucf.svc.neo4j v2.1.0

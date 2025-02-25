@@ -1,0 +1,30 @@
+apiVersion: v2
+dependencies:
+- name: vss
+  repository: ""
+  version: 2.1.0
+- name: etcd
+  repository: ""
+  version: 2.1.0
+- name: minio
+  repository: ""
+  version: 2.1.0
+- name: milvus
+  repository: ""
+  version: 2.1.0
+- name: neo4j
+  repository: ""
+  version: 2.1.0
+- name: nim-llm
+  repository: ""
+  version: 2.1.0
+- name: nemo-embedding
+  repository: ""
+  version: 2.1.0
+- name: nemo-rerank
+  repository: ""
+  version: 2.1.0
+description: Video Search and Summarization Agent Blueprint
+name: nvidia-blueprint-vss
+type: application
+version: 2.1.0

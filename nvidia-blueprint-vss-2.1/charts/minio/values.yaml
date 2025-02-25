@@ -1,0 +1,99 @@
+# Copyright (c) 2023, NVIDIA CORPORATION.  All rights reserved.
+#
+# NVIDIA CORPORATION and its licensors retain all intellectual property
+# and proprietary rights in and to this software, related documentation
+# and any modifications thereto.  Any use, reproduction, disclosure or
+# distribution of this software and related documentation without an express
+# license agreement from NVIDIA CORPORATION is strictly prohibited.
+
+Component:
+  app-version: 2.1.0
+  description: default description
+  helmUrlLocationPath: https://helm.ngc.nvidia.com/myorg/myteam/charts
+  name: minio
+  version: 2.1.0
+affinity: {}
+applicationSpecs:
+  minio-deployment:
+    apptype: stateless
+    containers:
+      minio-container:
+        command:
+        - minio
+        - server
+        - /minio_data
+        - --console-address
+        - :9011
+        - --address
+        - :9010
+        env:
+        - name: MINIO_ACCESS_KEY
+          value: minioadmin
+        - name: MINIO_SECRET_KEY
+          value: minioadmin
+        image:
+          repository: minio/minio
+          tag: RELEASE.2024-05-01T01-11-10Z
+        livenessProbe:
+          failureThreshold: 3
+          httpGet:
+            path: /minio/health/live
+            port: http
+          initialDelaySeconds: 30
+          periodSeconds: 30
+          timeoutSeconds: 20
+        ports:
+        - containerPort: 9011
+          name: http-console
+        - containerPort: 9010
+          name: http
+    services:
+      minio-service:
+        ports:
+        - name: http-api-console
+          port: 9011
+        - name: http-api
+          port: 9010
+defaultVolumeMounts:
+- mountPath: /opt/workload-config
+  name: workload-cm-volume
+- mountPath: /opt/configs
+  name: configs-volume
+- mountPath: /opt/scripts
+  name: scripts-cm-volume
+defaultVolumes:
+- configMap:
+    name: minio-workload-cm
+  name: workload-cm-volume
+- configMap:
+    name: minio-configs-cm
+  name: configs-volume
+- configMap:
+    name: minio-scripts-cm
+  name: scripts-cm-volume
+egress: {}
+externalFiles: []
+image:
+  pullPolicy: IfNotPresent
+imagePullSecrets: []
+ingress:
+  enabled: false
+metrics: {}
+nodeSelector: {}
+podAnnotations: {}
+podSecurityContext: {}
+replicaCount: 1
+resources: {}
+securityContext: {}
+storageClaims: {}
+tolerations: []
+workloadSpecs:
+  dummy: {}
+
+
+
+configs:
+  config.yaml:
+    SampleConfig:
+      sampleValue: 0
+

@@ -1,0 +1,6 @@
+apiVersion: v2
+appVersion: 2.1.0
+description: nvidia/nv-rerankqa-mistral-4b-v3 NIM microservice
+name: nemo-rerank
+type: application
+version: 2.1.0

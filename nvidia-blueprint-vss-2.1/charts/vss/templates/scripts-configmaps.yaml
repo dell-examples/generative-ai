@@ -1,0 +1,145 @@
+{{/*
+ Copyright (c) 2023, NVIDIA CORPORATION.  All rights reserved.
+
+ NVIDIA CORPORATION and its licensors retain all intellectual property
+ and proprietary rights in and to this software, related documentation
+ and any modifications thereto.  Any use, reproduction, disclosure or
+ distribution of this software and related documentation without an express
+ license agreement from NVIDIA CORPORATION is strictly prohibited.
+*/}}
+
+
+kind: ConfigMap
+apiVersion: v1
+metadata:
+  name: {{ $.Chart.Name }}-scripts-cm
+  {{- if .Values.namespace }}
+  namespace: {{ .Values.namespace }}
+  {{- end }}
+  labels:
+{{ include "hb.labels.standard" . | indent 4 }}
+{{- include "std-helm.labels" $ | nindent 4 }}
+data:
+  start.sh: |
+    #!/bin/bash
+
+    set -e
+
+    # export the fixed/default values
+    export GRAPH_DB_URI=bolt://neo-4-j-service:7687
+    export GRAPH_DB_USERNAME=neo4j
+    export GRAPH_DB_PASSWORD=password
+    export MILVUS_DB_HOST=milvus-milvus-deployment-milvus-service
+    export MILVUS_DB_PORT="19530"
+    export FRONTEND_PORT="9000"
+    export BACKEND_PORT="8000"
+    export OPENAI_API_KEY_NAME=VSS_OPENAI_API_KEY
+    export NVIDIA_API_KEY_NAME=VSS_NVIDIA_API_KEY
+    export NGC_API_KEY_NAME=VSS_NGC_API_KEY
+
+    # --> start secret reading
+    # read secret's key's value from k8s volume mount
+    # k8s runtime secret -> volume -> volumeMount to container at below path
+    export NGC_API_KEY=$(</secrets/ngc-api-key)
+
+    # --> start override secret's key's value from NVCF if NVCF secret is provide in creation API
+    # Check and set environment variables with default values if not set
+    if [ -z "${OPENAI_API_KEY_NAME}" ]; then
+        export OPENAI_API_KEY_NAME="openai-api-key"
+        echo "OPENAI_API_KEY_NAME was not set. Using default value: $OPENAI_API_KEY_NAME"
+    else
+        echo "OPENAI_API_KEY_NAME is already set to: $OPENAI_API_KEY_NAME"
+    fi
+
+    if [ -z "${NVIDIA_API_KEY_NAME}" ]; then
+        export NVIDIA_API_KEY_NAME="nvidia-api-key"
+        echo "NVIDIA_API_KEY_NAME was not set. Using default value: $NVIDIA_API_KEY_NAME"
+    else
+        echo "NVIDIA_API_KEY_NAME is already set to: $NVIDIA_API_KEY_NAME"
+    fi
+
+    if [ -z "${NGC_API_KEY_NAME}" ]; then
+        export NGC_API_KEY_NAME="ngc-api-key"
+        echo "NGC_API_KEY_NAME was not set. Using default value: $NGC_API_KEY_NAME"
+    else
+        echo "NGC_API_KEY_NAME is already set to: $NGC_API_KEY_NAME"
+    fi
+
+    # NVCF will mount secrets to /var/secrets/secrets.json, check and update accordingly
+    if [ -f "/var/secrets/secrets.json" ]; then
+        # list all keys name only
+        echo "Contents of /var/secrets/secrets.json:"
+        jq -r 'keys[]' /var/secrets/secrets.json
+
+        # OPENAI_API_KEY
+        if grep -q "$OPENAI_API_KEY_NAME" "/var/secrets/secrets.json"; then
+            echo "$OPENAI_API_KEY_NAME is present in /var/secrets/secrets.json"
+            old_key=$OPENAI_API_KEY
+            export OPENAI_API_KEY=$(cat "/var/secrets/secrets.json" | jq ".[\"$OPENAI_API_KEY_NAME\"]" -r)
+            if [ "$old_key" != "$OPENAI_API_KEY" ]; then
+                echo "OPENAI_API_KEY updated from secrets.json"
+            else
+                echo "OPENAI_API_KEY remains unchanged from Kubernetes secret"
+            fi
+        else
+            echo "$OPENAI_API_KEY_NAME is not present in /var/secrets/secrets.json"
+        fi
+
+        # NVIDIA_API_KEY
+        if grep -q "$NVIDIA_API_KEY_NAME" "/var/secrets/secrets.json"; then
+            echo "$NVIDIA_API_KEY_NAME is present in /var/secrets/secrets.json"
+            old_key=$NVIDIA_API_KEY
+            export NVIDIA_API_KEY=$(cat "/var/secrets/secrets.json" | jq ".[\"$NVIDIA_API_KEY_NAME\"]" -r)
+            if [ "$old_key" != "$NVIDIA_API_KEY" ]; then
+                echo "NVIDIA_API_KEY updated from secrets.json"
+            else
+                echo "NVIDIA_API_KEY remains unchanged from Kubernetes secret"
+            fi
+        else
+            echo "$NVIDIA_API_KEY_NAME is not present in /var/secrets/secrets.json"
+        fi
+
+        # NGC_API_KEY
+        if grep -q "$NGC_API_KEY_NAME" "/var/secrets/secrets.json"; then
+            echo "$NGC_API_KEY_NAME is present in /var/secrets/secrets.json"
+            old_key=$NGC_API_KEY
+            export NGC_API_KEY=$(cat "/var/secrets/secrets.json" | jq ".[\"$NGC_API_KEY_NAME\"]" -r)
+            if [ "$old_key" != "$NGC_API_KEY" ]; then
+                echo "NGC_API_KEY updated from secrets.json"
+            else
+                echo "NGC_API_KEY remains unchanged from Kubernetes secret"
+            fi
+        else
+            echo "$NGC_API_KEY_NAME is not present in /var/secrets/secrets.json"
+        fi
+    else
+        echo "/var/secrets/secrets.json file does not exist"
+    fi
+    # <-- end NVCF secret reading
+    # <-- end secret reading
+
+    #Overwrite default CA RAG in container:
+    mkdir -p /tmp/via
+    cp /opt/configs/guardrails_config.yaml /opt/nvidia/via/guardrails_config/config.yml
+    cp /opt/configs/ca_rag_config.yaml /tmp/via/default_config.yaml
+    export CA_RAG_CONFIG="/tmp/via/default_config.yaml"
+
+    mkdir -p /tmp/huggingface-via
+    export HF_HOME=/tmp/huggingface-via
+
+    export NGC_MODEL_CACHE=/tmp/via-ngc-model-cache
+
+    export CUPY_CACHE_DIR=/tmp/cupy_cache
+
+    mkdir -p /tmp/via/triton-cache
+    export TRITON_CACHE_DIR=/tmp/via/triton-cache
+
+    cd /tmp/via
+    ln -s /opt/nvidia/via/via-engine via-engine
+    ln -s /opt/nvidia/via/config config
+
+    /opt/nvidia/via/start_via.sh
+
+  script.sh: |
+    #The scripts can be used as commands in the Initcontainers or as container commands.
+    #Size of script file can not exceed 1 MiB

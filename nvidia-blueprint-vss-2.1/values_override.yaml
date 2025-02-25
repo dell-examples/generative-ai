@@ -1,0 +1,71 @@
+
+# Copyright (c) 2023, NVIDIA CORPORATION.  All rights reserved.
+#
+# NVIDIA CORPORATION and its licensors retain all intellectual property
+# and proprietary rights in and to this software, related documentation
+# and any modifications thereto.  Any use, reproduction, disclosure or
+# distribution of this software and related documentation without an express
+# license agreement from NVIDIA CORPORATION is strictly prohibited.
+
+vss:
+  namespace: default
+  serviceAccount: {}
+  nodeSelector: {}
+  tolerations: []
+  affinity: {}
+  storageClassName: ''
+etcd:
+  namespace: default
+  serviceAccount: {}
+  nodeSelector: {}
+  tolerations: []
+  affinity: {}
+  storageClassName: ''
+minio:
+  namespace: default
+  serviceAccount: {}
+  nodeSelector: {}
+  tolerations: []
+  affinity: {}
+  storageClassName: ''
+milvus:
+  namespace: default
+  serviceAccount: {}
+  nodeSelector: {}
+  tolerations: []
+  affinity: {}
+  storageClassName: ''
+neo4j:
+  namespace: default
+  serviceAccount: {}
+  nodeSelector: {}
+  tolerations: []
+  affinity: {}
+  storageClassName: ''
+nim-llm:
+  namespace: default
+  serviceAccount:
+    create: false
+    annotations: {}
+    name: ''
+  nodeSelector: {}
+  tolerations:
+  - key: nvidia.com/gpu
+    operator: Exists
+    effect: NoSchedule
+  affinity: {}
+  storageClassName: ''
+nemo-embedding:
+  namespace: default
+  serviceAccount: {}
+  nodeSelector: {}
+  tolerations: []
+  affinity: {}
+  storageClassName: ''
+nemo-rerank:
+  namespace: default
+  serviceAccount: {}
+  nodeSelector: {}
+  tolerations: []
+  affinity: {}
+  storageClassName: ''

@@ -1,0 +1,128 @@
+{{/*
+ Copyright (c) 2023, NVIDIA CORPORATION.  All rights reserved.
+
+ NVIDIA CORPORATION and its licensors retain all intellectual property
+ and proprietary rights in and to this software, related documentation
+ and any modifications thereto.  Any use, reproduction, disclosure or
+ distribution of this software and related documentation without an express
+ license agreement from NVIDIA CORPORATION is strictly prohibited.
+*/}}
+
+{{- define "log-agent-sidecar.podAnnotations" -}}
+{{- end -}}
+
+{{- define "log-agent-sidecar.container" -}}
+{{- if $.topValues.logging }}
+{{- if $.topValues.logging.enable }}
+{{- if eq $.topValues.logging.enable true }}
+- name: log-agent-sidecar
+  image: nvcr.io/nvidian/kratos-fluent-bit:v3.0
+  imagePullPolicy: IfNotPresent
+  command: [sh, -c]
+  args: [ "mkdir -p /fluent-bit/certs;
+                  cp /vault/secrets/kratos/kratos-client.key /fluent-bit/certs/client.key;
+                  cat /vault/secrets/kratos/kratos-client.crt > /fluent-bit/certs/client_chain.crt;
+                  echo \"\" >> /fluent-bit/certs/client_chain.crt;
+                  cat /vault/secrets/kratos/kratosca.pem >> /fluent-bit/certs/client_chain.crt;
+                  echo \"***** Using Vault-Generated Dynamic X509 Certs & Key for mTLS *****\";
+                  mkdir -p /var/log/fluent-bit/;
+                  chmod go-w -R /var/log/fluent-bit/;
+                  logrotate_manager.sh 1h &
+                  /fluent-bit/bin/fluent-bit -c /fluent-bit/etc/fluent-bit.conf -e /fluent-bit/bin/out_lumberjack.so;" ]
+  securityContext:
+    runAsGroup: 0
+    runAsUser: 0
+  env:
+  - name: FLUENT_LUMBERJACK_HOST
+    value: "bots.kratos.nvidia.com"
+  - name: FLUENT_LUMBERJACK_PORT
+    value: "5044"
+  - name: NODE_NAME
+    valueFrom:
+      fieldRef:
+        fieldPath: spec.nodeName
+  - name: POD_NAME
+    valueFrom:
+      fieldRef:
+        fieldPath: metadata.name
+  - name: POD_NAMESPACE
+    valueFrom:
+      fieldRef:
+        fieldPath: metadata.namespace
+  - name: POD_IP
+    valueFrom:
+      fieldRef:
+        fieldPath: status.podIP
+  {{- if $.topValues.logging.env }}
+  {{- toYaml $.topValues.logging.env |  nindent 2 }}
+  {{- end }}
+  ports:
+  - containerPort: 2020
+  livenessProbe:
+    exec:
+      command: ["/bin/sh", "-c",
+                "reply=$(curl -s -o /dev/null -w %{http_code} http://127.0.0.1:2020); if [ \"$reply\" -lt 200 -o \"$reply\" -ge 400 ]; then exit 1; fi; cat /vault/secrets/control"
+      ]
+    initialDelaySeconds: 120
+    periodSeconds: 60
+    successThreshold: 1
+    failureThreshold: 3
+  readinessProbe:
+    httpGet:
+      path: /api/v1/metrics/prometheus
+      port: 2020
+    initialDelaySeconds: 15
+    periodSeconds: 20
+  resources:
+    limits:
+      cpu: 250m
+      memory: 250Mi
+  volumeMounts:
+  - name: kratos-fluent-bit-config
+    mountPath: /fluent-bit/etc/
+  - name: logrotate-config
+    mountPath: /fluent-bit/logrotate/
+  {{- range $container := $.appData.containers }}
+  {{- if $container.logging }}
+  {{- if $container.logging.logFileInfo }}
+  {{- range $lfi := $container.logging.logFileInfo }}
+  {{- range $volMounts := $container.volumeMounts}}
+  {{- if eq $volMounts.name $lfi.sharedVol}}
+  - name: {{ $volMounts.name}}
+    mountPath: {{ $volMounts.mountPath }}
+  {{- end }}
+  {{- end }}
+  {{- end }}
+  {{- end }}
+  {{- end }}
+  {{- end }}
+  {{- if $.topValues.defaultVolumeMounts }}
+    #Default volumeMounts
+  {{- range $mount := $.topValues.defaultVolumeMounts }}
+  - name: {{ $mount.name }}
+    subPath: {{ $mount.subPath }}
+    mountPath: {{ $mount.mountPath }}
+  {{- end }}
+  {{- end }}
+  {{- end }}
+  {{- end }}
+{{- end }}
+{{- end -}}
+
+{{- define "log-agent-sidecar.configVolume" -}}
+{{- if $.topValues.logging }}
+{{- if $.topValues.logging.enable }}
+{{- if eq $.topValues.logging.enable true }}
+- name: kratos-fluent-bit-config
+  configMap:
+    name: {{ $.Chart.Name }}-{{ $.appname }}-kratos-fluent-bit-config
+- name: logrotate-config
+  configMap:
+    name: {{ $.Chart.Name }}-{{ $.appname }}-kratos-fluent-bit-config
+    items:
+    - key: logrotate-fluentbit.conf
+      path: logrotate-fluentbit.conf
+{{- end }}
+{{- end }}
+{{- end }}
+{{- end -}}

@@ -1,0 +1,38 @@
+{{/*
+ Copyright (c) 2023, NVIDIA CORPORATION.  All rights reserved.
+
+ NVIDIA CORPORATION and its licensors retain all intellectual property
+ and proprietary rights in and to this software, related documentation
+ and any modifications thereto.  Any use, reproduction, disclosure or
+ distribution of this software and related documentation without an express
+ license agreement from NVIDIA CORPORATION is strictly prohibited.
+*/}}
+
+{{- $topValues := .Values }}
+{{- if $topValues.ingress }}
+{{- if $topValues.ingress.enabled }}
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: {{ $.Chart.Name }}-ingress
+  {{- if $topValues.namespace }}
+  namespace: {{ $topValues.namespace }}
+  {{- end }}
+  labels:
+{{ include "microservice.hb.labels.standard" . | indent 4 }}
+{{- include "std-helm.labels" $ | nindent 4 }}
+  annotations:
+    kubernetes.io/ingress.class: {{.Values.ingress.className | default "nginx" }}
+    {{- with .Values.ingress.annotations}}
+    {{- toYaml . | nindent 4 }}
+    {{- end }}
+spec:
+  {{- if $topValues.ingress.extraSpecs }}
+  {{- $topValues.ingress.extraSpecs | toYaml | nindent 2}}
+  {{- end }}
+  rules:
+  {{- with .Values.ingress.rules}}
+  {{- toYaml . | nindent 4 }}
+  {{- end }}
+{{ end }}
+{{ end }}

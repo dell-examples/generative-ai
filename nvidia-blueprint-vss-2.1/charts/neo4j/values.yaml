@@ -1,0 +1,102 @@
+# Copyright (c) 2023, NVIDIA CORPORATION.  All rights reserved.
+#
+# NVIDIA CORPORATION and its licensors retain all intellectual property
+# and proprietary rights in and to this software, related documentation
+# and any modifications thereto.  Any use, reproduction, disclosure or
+# distribution of this software and related documentation without an express
+# license agreement from NVIDIA CORPORATION is strictly prohibited.
+
+Component:
+  app-version: 2.1.0
+  description: default description
+  helmUrlLocationPath: https://helm.ngc.nvidia.com/myorg/myteam/charts
+  name: neo4j
+  version: 2.1.0
+affinity: {}
+applicationSpecs:
+  neo4j-deployment:
+    apptype: stateless
+    containers:
+      neo4j-container:
+        command:
+        - bash
+        - /opt/scripts/start.sh
+        image:
+          repository: neo4j
+          tag: '5.24'
+        livenessProbe:
+          tcpSocket:
+            port: 7687
+        ports:
+        - containerPort: 7474
+          name: http
+        - containerPort: 7687
+          name: bolt
+        readinessProbe:
+          initialDelaySeconds: 5
+          periodSeconds: 5
+          tcpSocket:
+            port: 7687
+        startupProbe:
+          failureThreshold: 30
+          periodSeconds: 10
+          tcpSocket:
+            port: 7687
+    restartPolicy: Always
+    securityContext:
+      fsGroup: 7474
+      fsGroupChangePolicy: Always
+      runAsGroup: 7474
+      runAsNonRoot: true
+      runAsUser: 7474
+    services:
+      neo-4-j-service:
+        fullNameOverride: true
+        ports:
+        - name: http
+          port: 7474
+        - name: bolt
+          port: 7687
+defaultVolumeMounts:
+- mountPath: /opt/workload-config
+  name: workload-cm-volume
+- mountPath: /opt/configs
+  name: configs-volume
+- mountPath: /opt/scripts
+  name: scripts-cm-volume
+defaultVolumes:
+- configMap:
+    name: neo4j-workload-cm
+  name: workload-cm-volume
+- configMap:
+    name: neo4j-configs-cm
+  name: configs-volume
+- configMap:
+    name: neo4j-scripts-cm
+  name: scripts-cm-volume
+egress: {}
+externalFiles: []
+image:
+  pullPolicy: IfNotPresent
+imagePullSecrets: []
+ingress:
+  enabled: false
+metrics: {}
+nodeSelector: {}
+podAnnotations: {}
+podSecurityContext: {}
+replicaCount: 1
+resources: {}
+securityContext: {}
+storageClaims: {}
+tolerations: []
+workloadSpecs:
+  dummy: {}
+
+
+
+configs:
+  config.yaml:
+    SampleConfig:
+      sampleValue: 0
+

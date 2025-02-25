@@ -1,0 +1,6 @@
+apiVersion: v2
+appVersion: 2.1.0
+description: nvidia/nv-embedqa-e5-v5 NIM microservice
+name: nemo-embedding
+type: application
+version: 2.1.0

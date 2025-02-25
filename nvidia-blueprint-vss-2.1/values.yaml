@@ -1,0 +1,245 @@
+
+# Copyright (c) 2023, NVIDIA CORPORATION.  All rights reserved.
+#
+# NVIDIA CORPORATION and its licensors retain all intellectual property
+# and proprietary rights in and to this software, related documentation
+# and any modifications thereto.  Any use, reproduction, disclosure or
+# distribution of this software and related documentation without an express
+# license agreement from NVIDIA CORPORATION is strictly prohibited.
+
+global: {ngcImagePullSecretName: ""}
+nvcf:
+  dockerRegSecrets: []
+  additionalSecrets: []
+  localStorageProvisioner: []
+vss:
+  applicationSpecs:
+    vss-deployment:
+      containers:
+        vss:
+          startupProbe:
+            failureThreshold: 360
+          env:
+          - name: FRONTEND_PORT
+            value: '9000'
+          - name: BACKEND_PORT
+            value: '8000'
+          - name: GRAPH_DB_URI
+            value: bolt://neo-4-j-service:7687
+          - name: GRAPH_DB_USERNAME
+            value: neo4j
+          - name: GRAPH_DB_PASSWORD
+            value: password
+          - name: MILVUS_DB_HOST
+            value: milvus-milvus-deployment-milvus-service
+          - name: MILVUS_DB_PORT
+            value: '19530'
+          - name: VLM_MODEL_TO_USE
+            value: vila-1.5
+          - name: MODEL_PATH
+            value: ngc:nim/nvidia/vila-1.5-40b:vila-yi-34b-siglip-stage3_1003_video_v8
+          - name: DISABLE_GUARDRAILS
+            value: 'false'
+          - name: OPENAI_API_KEY_NAME
+            value: VSS_OPENAI_API_KEY
+          - name: NVIDIA_API_KEY_NAME
+            value: VSS_NVIDIA_API_KEY
+          - name: NGC_API_KEY_NAME
+            value: VSS_NGC_API_KEY
+          - name: TRT_LLM_MODE
+            value: fp16                ############# FOR LLAMA 70B DEPLOYMENT
+#            value: int8
+#            value: int4_awq
+          - name: VLM_BATCH_SIZE
+            value: ''
+          - name: VIA_VLM_OPENAI_MODEL_DEPLOYMENT_NAME
+            value: ''
+          - name: VIA_VLM_ENDPOINT
+            value: ''
+          - name: VIA_VLM_API_KEY
+            value: ''
+          - name: OPENAI_API_VERSION
+            value: ''
+          - name: AZURE_OPENAI_API_VERSION
+            value: ''
+      initContainers:
+      - command:
+        - sh
+        - -c
+        - until nc -z -w 2 milvus-milvus-deployment-milvus-service 19530; do echo
+          waiting for milvus; sleep 2; done
+        image: busybox:1.28
+        imagePullPolicy: IfNotPresent
+        name: check-milvus-up
+      - command:
+        - sh
+        - -c
+        - until nc -z -w 2 neo-4-j-service 7687; do echo waiting for neo4j; sleep
+          2; done
+        image: busybox:1.28
+        imagePullPolicy: IfNotPresent
+        name: check-neo4j-up
+      - args:
+        - "while ! curl -s -f -o /dev/null http://llm-nim-svc:8000/v1/health/live;\
+          \ do\n  echo \"Waiting for LLM...\"\n  sleep 2\ndone\n"
+        command:
+        - sh
+        - -c
+        image: curlimages/curl:latest
+        name: check-llm-up
+  llmModel: meta/llama-3.1-70b-instruct
+  llmModelChat: meta/llama-3.1-70b-instruct
+  resources:
+    limits:
+      nvidia.com/gpu: 2
+  nodeSelector:
+    kubernetes.io/hostname: worker-2
+
+  vlmModelPath: ngc:nim/nvidia/vila-1.5-40b:vila-yi-34b-siglip-stage3_1003_video_v8
+  vlmModelType: vila-1.5
+  configs:
+    ca_rag_config.yaml:
+      chat:
+        embedding:
+          base_url: http://nemo-embedding-embedding-deployment-embedding-service:8000/v1
+        llm:
+          base_url: http://llm-nim-svc:8000/v1
+          model: meta/llama-3.1-70b-instruct
+        reranker:
+          base_url: http://nemo-rerank-ranking-deployment-ranking-service:8000/v1
+      summarization:
+        embedding:
+          base_url: http://nemo-embedding-embedding-deployment-embedding-service:8000/v1
+        llm:
+          base_url: http://llm-nim-svc:8000/v1
+          model: meta/llama-3.1-70b-instruct
+    guardrails_config.yaml:
+      models:
+      - engine: nim
+        model: meta/llama-3.1-70b-instruct
+        parameters:
+          base_url: http://llm-nim-svc:8000/v1
+        type: main
+      - engine: nim_patch
+        model: nvidia/llama-3.2-nv-embedqa-1b-v2
+        parameters:
+          base_url: http://nemo-embedding-embedding-deployment-embedding-service:8000/v1
+        type: embeddings
+  extraPodVolumes:
+  - name: secret-ngc-api-key-volume
+    secret:
+      secretName: ngc-api-key-secret
+      items:
+      - key: NGC_API_KEY
+        path: ngc-api-key
+  - name: secret-graph-db-username-volume
+    secret:
+      secretName: graph-db-creds-secret
+      items:
+      - key: username
+        path: graph-db-username
+  - name: secret-graph-db-password-volume
+    secret:
+      secretName: graph-db-creds-secret
+      items:
+      - key: password
+        path: graph-db-password
+  extraPodVolumeMounts:
+  - name: secret-ngc-api-key-volume
+    mountPath: /secrets/ngc-api-key
+    subPath: ngc-api-key
+    readOnly: true
+  - name: secret-graph-db-username-volume
+    mountPath: /secrets/graph-db-username
+    subPath: graph-db-username
+    readOnly: true
+  - name: secret-graph-db-password-volume
+    mountPath: /secrets/graph-db-password
+    subPath: graph-db-password
+    readOnly: true
+  egress:
+    milvus:
+      address: milvus-milvus-deployment-milvus-service
+      port: 19530
+    neo4j-bolt:
+      address: neo-4-j-service
+      port: 7687
+    llm-openai-api:
+      address: llm-nim-svc
+      port: 8000
+    nemo-embed:
+      address: nemo-embedding-embedding-deployment-embedding-service
+      port: 8000
+    nemo-rerank:
+      address: nemo-rerank-ranking-deployment-ranking-service
+      port: 8000
+milvus:
+  applicationSpecs:
+    milvus-deployment:
+      containers:
+        milvus-container:
+          env:
+          - name: ETCD_ENDPOINTS
+            value: etcd-etcd-deployment-etcd-service:2379
+          - name: MINIO_ADDRESS
+            value: minio-minio-deployment-minio-service:9010
+          - name: KNOWHERE_GPU_MEM_POOL_SIZE
+            value: 2048;4096
+  egress:
+    etcd:
+      address: etcd-etcd-deployment-etcd-service
+      port: 2379
+    minio:
+      address: minio-minio-deployment-minio-service
+      port: 9010
+neo4j:
+  extraPodVolumes:
+  - name: secret-db-username-volume
+    secret:
+      secretName: graph-db-creds-secret
+      items:
+      - key: username
+        path: db-username
+  - name: secret-db-password-volume
+    secret:
+      secretName: graph-db-creds-secret
+      items:
+      - key: password
+        path: db-password
+  extraPodVolumeMounts:
+  - name: secret-db-username-volume
+    mountPath: /secrets/db-username
+    subPath: db-username
+    readOnly: true
+  - name: secret-db-password-volume
+    mountPath: /secrets/db-password
+    subPath: db-password
+    readOnly: true
+nim-llm:
+  image:
+    repository: nvcr.io/nim/meta/llama-3.1-70b-instruct
+    tag: 1.3.3
+  resources:
+    limits:
+      nvidia.com/gpu: 4
+  model:
+    name: meta/llama-3.1-70b-instruct
+    ngcAPISecret: ngc-api-key-secret
+  persistence:
+    enabled: true
+  hostPath:
+    enabled: true
+  service:
+    name: llm-nim-svc
+  llmModel: meta/llama-3.1-70b-instruct
+nemo-embedding:
+  resources:
+    limits:
+      nvidia.com/gpu: 1
+
+nemo-rerank:
+  resources:
+    limits:
+      nvidia.com/gpu: 1
+
+

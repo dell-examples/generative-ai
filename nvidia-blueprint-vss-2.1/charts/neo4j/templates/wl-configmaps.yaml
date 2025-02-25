@@ -1,0 +1,30 @@
+{{/*
+ Copyright (c) 2023, NVIDIA CORPORATION.  All rights reserved.
+
+ NVIDIA CORPORATION and its licensors retain all intellectual property
+ and proprietary rights in and to this software, related documentation
+ and any modifications thereto.  Any use, reproduction, disclosure or
+ distribution of this software and related documentation without an express
+ license agreement from NVIDIA CORPORATION is strictly prohibited.
+*/}}
+
+{{- with .Values.workloadSpecs }}
+{{- $wlSpec :=  . }}
+kind: ConfigMap
+apiVersion: v1
+metadata:
+  name: {{ $.Chart.Name }}-workload-cm
+  {{- if $.Values.namespace }}
+  namespace: {{ $.Values.namespace }}
+   {{- end }}
+  labels:
+{{ include "hb.labels.standard" . | indent 4 }}
+{{- include "std-helm.labels" $ | nindent 4 }}
+data:
+{{- range $wl_key, $wl_value := $wlSpec }}
+  {{- with $wl_value.wl_data }}
+  {{$wl_key}}: |
+   {{- $wl_value.wl_data | default "" | nindent 4 }}
+  {{- end}}
+{{- end}}
+{{- end}}
