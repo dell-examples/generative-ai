@@ -7,9 +7,9 @@ services:
     env_file:
       - .env
     ports:
-#      - "7860:7860"    #### use when accessing on laptop internally to localhost
+      - "7860:7860"    #### use when accessing on laptop internally to localhost
 #      - "172.16.14.195:7860:7860"    #### use when accessing through browser on jump box
-      - "YOUR-IP:7860:7860"    
+#      - "YOUR-IP:7860:7860"    
     volumes:
       - ${LOCAL_WORKSPACE_FOLDER:-.}/data:/data
       - ${LOCAL_WORKSPACE_FOLDER:-.}/samples:/workspace/samples
