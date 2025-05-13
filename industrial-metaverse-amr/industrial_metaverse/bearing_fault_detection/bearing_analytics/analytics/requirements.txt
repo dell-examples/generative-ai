@@ -1,5 +1,0 @@
-asyncua==1.0.6
-PyYAML==6.0.1
-pandas==2.2.0
-scikit-learn==1.4.0
-influxdb==5.3.1

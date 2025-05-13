@@ -1,6 +1,0 @@
-openvino==2023.1.0
-python-ffmpeg==1.0.16
-onnx==1.14.1
-fire==0.5.0
-openai-whisper==20230918
-torch --index-url https://download.pytorch.org/whl/cpu-cxx11-abi/torch-2.1.0%2Bcpu.cxx11.abi-cp310-cp310-linux_x86_64.whl

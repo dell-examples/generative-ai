@@ -1,6 +1,0 @@
-gradio==3.36.1
-plotly==5.15.0
-influxdb==5.3.1
-opencv-python==4.9.0.80
-pandas==2.2.0
-eclipse-zenoh==0.10.1rc0

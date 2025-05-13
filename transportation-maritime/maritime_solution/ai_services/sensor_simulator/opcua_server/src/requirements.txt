@@ -1,3 +1,0 @@
-asyncio==3.4.3
-asyncua==1.0.6
-PyYAML==6.0.1
